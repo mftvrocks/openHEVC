@@ -41,6 +41,8 @@
  * Section 5.7
  */
 //#define POC_DISPLAY_MD5
+
+#define USE_AVX
 #define WPP1
 static void pic_arrays_free(HEVCContext *s)
 {
@@ -638,8 +640,11 @@ static void hls_residual_coding(HEVCContext *s, int x0, int y0, int log2_trafo_s
     int vshift = s->sps->vshift[c_idx];
     uint8_t *dst = &s->frame->data[c_idx][(y0 >> vshift) * stride +
                                          ((x0 >> hshift) << s->sps->pixel_shift)];
+#ifdef USE_AVX
+    DECLARE_ALIGNED( 32, int16_t, coeffs[MAX_TB_SIZE * MAX_TB_SIZE] )= { 0 };
+#else
     DECLARE_ALIGNED( 16, int16_t, coeffs[MAX_TB_SIZE * MAX_TB_SIZE] )= { 0 };
-
+#endif
     int trafo_size = 1 << log2_trafo_size;
 
     memset(s->rc[entry].significant_coeff_group_flag, 0, 8*8);
@@ -1311,11 +1316,13 @@ static void hls_prediction_unit(HEVCContext *s, int x0, int y0, int nPbW, int nP
         }
     }
     if (current_mv.pred_flag[0] && !current_mv.pred_flag[1]) {
-       // int16_t tmp[MAX_PB_SIZE*MAX_PB_SIZE];
-       // int16_t tmp2[MAX_PB_SIZE*MAX_PB_SIZE];
+#ifdef USE_AVX
+        DECLARE_ALIGNED( 32, int16_t, tmp[MAX_PB_SIZE*MAX_PB_SIZE] );
+        DECLARE_ALIGNED( 32, int16_t, tmp2[MAX_PB_SIZE * MAX_PB_SIZE] );
+#else
         DECLARE_ALIGNED( 16, int16_t, tmp[MAX_PB_SIZE*MAX_PB_SIZE] );
         DECLARE_ALIGNED( 16, int16_t, tmp2[MAX_PB_SIZE * MAX_PB_SIZE] );
-
+#endif
         if (! s->pps->weighted_pred_flag){
             luma_mc(s, tmp, tmpstride,
                     s->DPB[refPicList[0].idx[current_mv.ref_idx[0]]].frame,
@@ -1348,10 +1355,14 @@ static void hls_prediction_unit(HEVCContext *s, int x0, int y0, int nPbW, int nP
         }
 
     } else if (!current_mv.pred_flag[0] && current_mv.pred_flag[1]) {
-       //int16_t tmp[MAX_PB_SIZE*MAX_PB_SIZE];
-      //  int16_t tmp2[MAX_PB_SIZE*MAX_PB_SIZE];
+
+#ifdef USE_AVX
+        DECLARE_ALIGNED( 32, int16_t, tmp[MAX_PB_SIZE*MAX_PB_SIZE] );
+        DECLARE_ALIGNED( 32, int16_t, tmp2[MAX_PB_SIZE * MAX_PB_SIZE] );
+#else
         DECLARE_ALIGNED( 16, int16_t, tmp[MAX_PB_SIZE*MAX_PB_SIZE] );
         DECLARE_ALIGNED( 16, int16_t, tmp2[MAX_PB_SIZE * MAX_PB_SIZE] );
+#endif
         if (! s->pps->weighted_pred_flag){
             luma_mc(s, tmp, tmpstride,
                     s->DPB[refPicList[1].idx[current_mv.ref_idx[1]]].frame,
@@ -1385,14 +1396,17 @@ static void hls_prediction_unit(HEVCContext *s, int x0, int y0, int nPbW, int nP
         }
 
     } else if (current_mv.pred_flag[0] && current_mv.pred_flag[1]) {
-      //  int16_t tmp[MAX_PB_SIZE*MAX_PB_SIZE];
-      //  int16_t tmp2[MAX_PB_SIZE*MAX_PB_SIZE];
-      //  int16_t tmp3[MAX_PB_SIZE*MAX_PB_SIZE];
-      //  int16_t tmp4[MAX_PB_SIZE*MAX_PB_SIZE];
+#ifdef USE_AVX
+    	DECLARE_ALIGNED( 32, int16_t, tmp[MAX_PB_SIZE*MAX_PB_SIZE] );
+    	        DECLARE_ALIGNED( 32, int16_t, tmp2[MAX_PB_SIZE*MAX_PB_SIZE] );
+    	        DECLARE_ALIGNED( 32, int16_t, tmp3[MAX_PB_SIZE*MAX_PB_SIZE] );
+    	        DECLARE_ALIGNED( 32, int16_t, tmp4[MAX_PB_SIZE*MAX_PB_SIZE] );
+#else
         DECLARE_ALIGNED( 16, int16_t, tmp[MAX_PB_SIZE*MAX_PB_SIZE] );
         DECLARE_ALIGNED( 16, int16_t, tmp2[MAX_PB_SIZE*MAX_PB_SIZE] );
         DECLARE_ALIGNED( 16, int16_t, tmp3[MAX_PB_SIZE*MAX_PB_SIZE] );
         DECLARE_ALIGNED( 16, int16_t, tmp4[MAX_PB_SIZE*MAX_PB_SIZE] );
+#endif
         if (! s->pps->weighted_bipred_flag){
             luma_mc(s, tmp, tmpstride,
                     s->DPB[refPicList[0].idx[current_mv.ref_idx[0]]].frame,
