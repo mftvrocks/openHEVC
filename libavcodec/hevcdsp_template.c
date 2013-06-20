@@ -50,6 +50,7 @@
 #define SSE_DEQUANT
 #define SSE_MC
 #define SSE_EPEL
+#define SSE_SAO_BAND
 #define SSE_unweight_pred
 #define SSE_put_weight_pred
 #define SSE_weight_pred
@@ -3482,8 +3483,101 @@ static void FUNC(transform_32x32_add)(uint8_t *_dst, int16_t *coeffs, ptrdiff_t 
 #endif
 }
 
+#ifdef SSE_SAO_BAND
+static void FUNC(sao_band_filter_wpp_0)( uint8_t *_dst, uint8_t *_src, ptrdiff_t _stride, struct SAOParams *sao,int *borders, int width, int height, int c_idx)
+{
+    uint8_t *dst = _dst;
+    uint8_t *src = _src;
+    ptrdiff_t stride = _stride;
 
-static void FUNC(sao_band_filter_wpp)( uint8_t *_dst, uint8_t *_src, ptrdiff_t _stride, struct SAOParams *sao,int *borders, int width, int height, int c_idx, int class_index)
+    int k, y, x;
+    int chroma = c_idx!=0;
+    int shift = BIT_DEPTH - 5;
+    int *sao_offset_val = sao->offset_val[c_idx];
+    int sao_left_class = sao->band_position[c_idx];
+
+    int init_y = 0, init_x =0;
+            if(!borders[2] )
+                width -= ((8>>chroma)+2) ;
+            if(!borders[3] )
+                height -= ((4>>chroma)+2);
+    dst = dst + (init_y*_stride + init_x);
+    src = src + (init_y*_stride + init_x);
+
+
+    __m128i	r0 ,r1 ,r2 ,r3,x0 ,x1 ,x2 ,x3, sao1 ,sao2 ,sao3 ,sao4 , src0,src1,src2,src3;
+
+
+    r0= _mm_set1_epi16(sao_left_class & 31);
+    r1= _mm_set1_epi16((sao_left_class+1) & 31);
+    r2= _mm_set1_epi16((sao_left_class+2) & 31);
+    r3= _mm_set1_epi16((sao_left_class+3) & 31);
+
+    sao1= _mm_set1_epi16(sao_offset_val[1]);
+    sao2= _mm_set1_epi16(sao_offset_val[2]);
+    sao3= _mm_set1_epi16(sao_offset_val[3]);
+    sao4= _mm_set1_epi16(sao_offset_val[4]);
+
+
+        for (y = 0; y < height; y++) {
+            for (x = 0; x < width; x+=16) {
+
+            	src0= _mm_loadu_si128(&src[x]);
+
+
+            	//unpack en 16 bits
+            	src1= _mm_unpackhi_epi8(src0,_mm_setzero_si128());
+            	src0= _mm_unpacklo_epi8(src0,_mm_setzero_si128());
+
+            	src2= _mm_srai_epi16(src0,shift);
+            	src3= _mm_srai_epi16(src1,shift);
+
+            	x0= _mm_cmpeq_epi16(src2, r0);
+            	x1= _mm_cmpeq_epi16(src2, r1);
+            	x2= _mm_cmpeq_epi16(src2, r2);
+            	x3= _mm_cmpeq_epi16(src2, r3);
+
+            	x0= _mm_and_si128(x0,sao1);
+            	x1= _mm_and_si128(x1,sao2);
+            	x2= _mm_and_si128(x2,sao3);
+            	x3= _mm_and_si128(x3,sao4);
+
+
+            	x0= _mm_or_si128(x0,x1);
+            	x2= _mm_or_si128(x2,x3);
+
+
+            	x0= _mm_or_si128(x0,x2);	//contient resultat pour 4 pixels
+
+            	src0= _mm_add_epi16(src0,x0);
+
+            	x0= _mm_cmpeq_epi16(src3, r0);
+            	x1= _mm_cmpeq_epi16(src3, r1);
+            	x2= _mm_cmpeq_epi16(src3, r2);
+            	x3= _mm_cmpeq_epi16(src3, r3);
+
+            	x0= _mm_and_si128(x0,sao1);
+            	x1= _mm_and_si128(x1,sao2);
+            	x2= _mm_and_si128(x2,sao3);
+            	x3= _mm_and_si128(x3,sao4);
+
+            	x0= _mm_or_si128(x0,x1);
+            	x2= _mm_or_si128(x2,x3);
+
+            	x0= _mm_or_si128(x0,x2);	//contient resultat pour 4 pixels
+
+            	src1= _mm_add_epi16(src1,x0);
+
+            	src0= _mm_packus_epi16(src0,src1);
+            	_mm_storeu_si128(&dst[x],src0);
+
+            }
+            dst += stride;
+            src += stride;
+        }
+}
+
+static void FUNC(sao_band_filter_wpp_1)( uint8_t *_dst, uint8_t *_src, ptrdiff_t _stride, struct SAOParams *sao,int *borders, int width, int height, int c_idx)
 {
     uint8_t *dst = _dst;
     uint8_t *src = _src;
@@ -3494,34 +3588,296 @@ static void FUNC(sao_band_filter_wpp)( uint8_t *_dst, uint8_t *_src, ptrdiff_t _
     int shift = BIT_DEPTH - 5;
     int *sao_offset_val = sao->offset_val[c_idx];
     int sao_left_class = sao->band_position[c_idx];
-    
+
     int init_y = 0, init_x =0;
-    switch(class_index) {
-        case 0:
-            if(!borders[2] )
-                width -= ((8>>chroma)+2) ;
-            if(!borders[3] )
-                height -= ((4>>chroma)+2);
-            break;
-        case 1:
+
+
             init_y = -(4>>chroma)-2;
             if(!borders[2] )
                 width -= ((8>>chroma)+2);
             height = (4>>chroma)+2;
-            break;
-        case 2:
+
+    dst = dst + (init_y*_stride + init_x);
+    src = src + (init_y*_stride + init_x);
+    __m128i	r0 ,r1 ,r2 ,r3,x0 ,x1 ,x2 ,x3, sao1 ,sao2 ,sao3 ,sao4 , src0,src1,src2,src3;
+
+
+       r0= _mm_set1_epi16(sao_left_class & 31);
+       r1= _mm_set1_epi16((sao_left_class+1) & 31);
+       r2= _mm_set1_epi16((sao_left_class+2) & 31);
+       r3= _mm_set1_epi16((sao_left_class+3) & 31);
+
+       sao1= _mm_set1_epi16(sao_offset_val[1]);
+       sao2= _mm_set1_epi16(sao_offset_val[2]);
+       sao3= _mm_set1_epi16(sao_offset_val[3]);
+       sao4= _mm_set1_epi16(sao_offset_val[4]);
+
+
+           for (y = 0; y < height; y++) {
+               for (x = 0; x < width; x+=16) {
+
+               	src0= _mm_loadu_si128(&src[x]);
+
+
+               	//unpack en 16 bits
+               	src1= _mm_unpackhi_epi8(src0,_mm_setzero_si128());
+               	src0= _mm_unpacklo_epi8(src0,_mm_setzero_si128());
+
+               	src2= _mm_srai_epi16(src0,shift);
+               	src3= _mm_srai_epi16(src1,shift);
+
+               	x0= _mm_cmpeq_epi16(src2, r0);
+               	x1= _mm_cmpeq_epi16(src2, r1);
+               	x2= _mm_cmpeq_epi16(src2, r2);
+               	x3= _mm_cmpeq_epi16(src2, r3);
+
+               	x0= _mm_and_si128(x0,sao1);
+               	x1= _mm_and_si128(x1,sao2);
+               	x2= _mm_and_si128(x2,sao3);
+               	x3= _mm_and_si128(x3,sao4);
+
+
+               	x0= _mm_or_si128(x0,x1);
+               	x2= _mm_or_si128(x2,x3);
+
+
+               	x0= _mm_or_si128(x0,x2);	//contient resultat pour 4 pixels
+
+               	src0= _mm_add_epi16(src0,x0);
+
+               	x0= _mm_cmpeq_epi16(src3, r0);
+               	x1= _mm_cmpeq_epi16(src3, r1);
+               	x2= _mm_cmpeq_epi16(src3, r2);
+               	x3= _mm_cmpeq_epi16(src3, r3);
+
+               	x0= _mm_and_si128(x0,sao1);
+               	x1= _mm_and_si128(x1,sao2);
+               	x2= _mm_and_si128(x2,sao3);
+               	x3= _mm_and_si128(x3,sao4);
+
+               	x0= _mm_or_si128(x0,x1);
+               	x2= _mm_or_si128(x2,x3);
+
+               	x0= _mm_or_si128(x0,x2);	//contient resultat pour 4 pixels
+
+               	src1= _mm_add_epi16(src1,x0);
+
+               	src0= _mm_packus_epi16(src0,src1);
+               	_mm_storeu_si128(&dst[x],src0);
+
+               }
+               dst += stride;
+               src += stride;
+           }
+}
+
+static void FUNC(sao_band_filter_wpp_2)( uint8_t *_dst, uint8_t *_src, ptrdiff_t _stride, struct SAOParams *sao,int *borders, int width, int height, int c_idx)
+{
+    uint8_t *dst = _dst;
+    uint8_t *src = _src;
+    ptrdiff_t stride = _stride;
+    int band_table[32] = { 0 };
+    int k, y, x;
+    int chroma = c_idx!=0;
+    int shift = BIT_DEPTH - 5;
+    int *sao_offset_val = sao->offset_val[c_idx];
+    int sao_left_class = sao->band_position[c_idx];
+
+    int init_y = 0, init_x =0;
+    __m128i	r0 ,r1 ,r2 ,r3,x0 ,x1 ,x2 ,x3, sao1 ,sao2 ,sao3 ,sao4 , src0,src1,src2,src3;
+
             init_x = -(8>>chroma)-2;
-            width = (8>>chroma)+2;
+            width = (8>>chroma)+2;	//width < 16
             if(!borders[3])
                 height -= ((4>>chroma)+2);
-            break;
-        case 3:
+
+    dst = dst + (init_y*_stride + init_x);
+    src = src + (init_y*_stride + init_x);
+
+    r0= _mm_set1_epi16(sao_left_class & 31);
+    r1= _mm_set1_epi16((sao_left_class+1) & 31);
+    r2= _mm_set1_epi16((sao_left_class+2) & 31);
+    r3= _mm_set1_epi16((sao_left_class+3) & 31);
+
+    sao1= _mm_set1_epi16(sao_offset_val[1]);
+    sao2= _mm_set1_epi16(sao_offset_val[2]);
+    sao3= _mm_set1_epi16(sao_offset_val[3]);
+    sao4= _mm_set1_epi16(sao_offset_val[4]);
+
+
+        for (y = 0; y < height; y++) {
+
+        	src0= _mm_loadu_si128(&src[0]);
+
+
+        	//unpack en 16 bits
+        	src1= _mm_unpackhi_epi8(src0,_mm_setzero_si128());
+        	src0= _mm_unpacklo_epi8(src0,_mm_setzero_si128());
+
+        	src2= _mm_srai_epi16(src0,shift);
+        	src3= _mm_srai_epi16(src1,shift);
+
+        	x0= _mm_cmpeq_epi16(src2, r0);
+        	x1= _mm_cmpeq_epi16(src2, r1);
+        	x2= _mm_cmpeq_epi16(src2, r2);
+        	x3= _mm_cmpeq_epi16(src2, r3);
+
+        	x0= _mm_and_si128(x0,sao1);
+        	x1= _mm_and_si128(x1,sao2);
+        	x2= _mm_and_si128(x2,sao3);
+        	x3= _mm_and_si128(x3,sao4);
+
+
+        	x0= _mm_or_si128(x0,x1);
+        	x2= _mm_or_si128(x2,x3);
+
+
+        	x0= _mm_or_si128(x0,x2);	//contient resultat pour 4 pixels
+
+        	src0= _mm_add_epi16(src0,x0);
+
+        	x0= _mm_cmpeq_epi16(src3, r0);
+        	x1= _mm_cmpeq_epi16(src3, r1);
+        	x2= _mm_cmpeq_epi16(src3, r2);
+        	x3= _mm_cmpeq_epi16(src3, r3);
+
+        	x0= _mm_and_si128(x0,sao1);
+        	x1= _mm_and_si128(x1,sao2);
+        	x2= _mm_and_si128(x2,sao3);
+        	x3= _mm_and_si128(x3,sao4);
+
+        	x0= _mm_or_si128(x0,x1);
+        	x2= _mm_or_si128(x2,x3);
+
+        	x0= _mm_or_si128(x0,x2);	//contient resultat pour 4 pixels
+
+        	src1= _mm_add_epi16(src1,x0);
+
+        	src0= _mm_packus_epi16(src0,src1);
+
+        	for (x = 0; x < width; x+=2) {
+        		dst[x] = _mm_extract_epi8(src0,0);
+        		dst[x+1]= _mm_extract_epi8(src0,1);
+        		src0= _mm_srli_si128(src0,2);
+            }
+            dst += stride;
+            src += stride;
+        }
+}
+
+static void FUNC(sao_band_filter_wpp_3)( uint8_t *_dst, uint8_t *_src, ptrdiff_t _stride, struct SAOParams *sao,int *borders, int width, int height, int c_idx)
+{
+    uint8_t *dst = _dst;
+    uint8_t *src = _src;
+    ptrdiff_t stride = _stride;
+    int band_table[32] = { 0 };
+    int k, y, x;
+    int chroma = c_idx!=0;
+    int shift = BIT_DEPTH - 5;
+    int *sao_offset_val = sao->offset_val[c_idx];
+    int sao_left_class = sao->band_position[c_idx];
+    __m128i	r0 ,r1 ,r2 ,r3,x0 ,x1 ,x2 ,x3, sao1 ,sao2 ,sao3 ,sao4 , src0,src1,src2,src3;
+    int init_y = 0, init_x =0;
+
             init_y = -(4>>chroma)-2;
             init_x = -(8>>chroma)-2;
-            width = (8>>chroma)+2;
+            width = (8>>chroma)+2;		//width < 16
             height = (4>>chroma)+2;
-            break;
-    }
+
+    dst = dst + (init_y*_stride + init_x);
+    src = src + (init_y*_stride + init_x);
+
+
+    r0= _mm_set1_epi16(sao_left_class & 31);
+    r1= _mm_set1_epi16((sao_left_class+1) & 31);
+    r2= _mm_set1_epi16((sao_left_class+2) & 31);
+    r3= _mm_set1_epi16((sao_left_class+3) & 31);
+
+    sao1= _mm_set1_epi16(sao_offset_val[1]);
+    sao2= _mm_set1_epi16(sao_offset_val[2]);
+    sao3= _mm_set1_epi16(sao_offset_val[3]);
+    sao4= _mm_set1_epi16(sao_offset_val[4]);
+
+
+        for (y = 0; y < height; y++) {
+
+        	src0= _mm_loadu_si128(&src[0]);
+
+
+        	//unpack en 16 bits
+        	src1= _mm_unpackhi_epi8(src0,_mm_setzero_si128());
+        	src0= _mm_unpacklo_epi8(src0,_mm_setzero_si128());
+
+        	src2= _mm_srai_epi16(src0,shift);
+        	src3= _mm_srai_epi16(src1,shift);
+
+        	x0= _mm_cmpeq_epi16(src2, r0);
+        	x1= _mm_cmpeq_epi16(src2, r1);
+        	x2= _mm_cmpeq_epi16(src2, r2);
+        	x3= _mm_cmpeq_epi16(src2, r3);
+
+        	x0= _mm_and_si128(x0,sao1);
+        	x1= _mm_and_si128(x1,sao2);
+        	x2= _mm_and_si128(x2,sao3);
+        	x3= _mm_and_si128(x3,sao4);
+
+
+        	x0= _mm_or_si128(x0,x1);
+        	x2= _mm_or_si128(x2,x3);
+
+
+        	x0= _mm_or_si128(x0,x2);	//contient resultat pour 4 pixels
+
+        	src0= _mm_add_epi16(src0,x0);
+
+        	x0= _mm_cmpeq_epi16(src3, r0);
+        	x1= _mm_cmpeq_epi16(src3, r1);
+        	x2= _mm_cmpeq_epi16(src3, r2);
+        	x3= _mm_cmpeq_epi16(src3, r3);
+
+        	x0= _mm_and_si128(x0,sao1);
+        	x1= _mm_and_si128(x1,sao2);
+        	x2= _mm_and_si128(x2,sao3);
+        	x3= _mm_and_si128(x3,sao4);
+
+        	x0= _mm_or_si128(x0,x1);
+        	x2= _mm_or_si128(x2,x3);
+
+        	x0= _mm_or_si128(x0,x2);	//contient resultat pour 4 pixels
+
+        	src1= _mm_add_epi16(src1,x0);
+
+        	src0= _mm_packus_epi16(src0,src1);
+
+        	for (x = 0; x < width; x+=2) {
+        		dst[x] = _mm_extract_epi8(src0,0);
+        		dst[x+1]= _mm_extract_epi8(src0,1);
+        		src0= _mm_srli_si128(src0,2);
+            }
+            dst += stride;
+            src += stride;
+        }
+}
+#else
+static void FUNC(sao_band_filter_wpp_0)( uint8_t *_dst, uint8_t *_src, ptrdiff_t _stride, struct SAOParams *sao,int *borders, int width, int height, int c_idx)
+{
+    uint8_t *dst = _dst;
+    uint8_t *src = _src;
+    ptrdiff_t stride = _stride;
+    int band_table[32] = { 0 };
+    int k, y, x;
+    int chroma = c_idx!=0;
+    int shift = BIT_DEPTH - 5;
+    int *sao_offset_val = sao->offset_val[c_idx];
+    int sao_left_class = sao->band_position[c_idx];
+
+    int init_y = 0, init_x =0;
+
+            if(!borders[2] )
+                width -= ((8>>chroma)+2) ;
+            if(!borders[3] )
+                height -= ((4>>chroma)+2);
+
     dst = dst + (init_y*_stride + init_x);
     src = src + (init_y*_stride + init_x);
     for (k = 0; k < 4; k++)
@@ -3537,6 +3893,110 @@ static void FUNC(sao_band_filter_wpp)( uint8_t *_dst, uint8_t *_src, ptrdiff_t _
         }
 }
 
+static void FUNC(sao_band_filter_wpp_1)( uint8_t *_dst, uint8_t *_src, ptrdiff_t _stride, struct SAOParams *sao,int *borders, int width, int height, int c_idx)
+{
+    uint8_t *dst = _dst;
+    uint8_t *src = _src;
+    ptrdiff_t stride = _stride;
+    int band_table[32] = { 0 };
+    int k, y, x;
+    int chroma = c_idx!=0;
+    int shift = BIT_DEPTH - 5;
+    int *sao_offset_val = sao->offset_val[c_idx];
+    int sao_left_class = sao->band_position[c_idx];
+
+    int init_y = 0, init_x =0;
+
+
+            init_y = -(4>>chroma)-2;
+            if(!borders[2] )
+                width -= ((8>>chroma)+2);
+            height = (4>>chroma)+2;
+
+    dst = dst + (init_y*_stride + init_x);
+    src = src + (init_y*_stride + init_x);
+    for (k = 0; k < 4; k++)
+        band_table[(k + sao_left_class) & 31] = k + 1;
+        for (y = 0; y < height; y++) {
+            for (x = 0; x < width; x++) {
+                dst[x] = av_clip_pixel(src[x] + sao_offset_val[band_table[src[x] >> shift]]);
+                x++;
+                dst[x] = av_clip_pixel(src[x] + sao_offset_val[band_table[src[x] >> shift]]);
+            }
+            dst += stride;
+            src += stride;
+        }
+}
+
+static void FUNC(sao_band_filter_wpp_2)( uint8_t *_dst, uint8_t *_src, ptrdiff_t _stride, struct SAOParams *sao,int *borders, int width, int height, int c_idx)
+{
+    uint8_t *dst = _dst;
+    uint8_t *src = _src;
+    ptrdiff_t stride = _stride;
+    int band_table[32] = { 0 };
+    int k, y, x;
+    int chroma = c_idx!=0;
+    int shift = BIT_DEPTH - 5;
+    int *sao_offset_val = sao->offset_val[c_idx];
+    int sao_left_class = sao->band_position[c_idx];
+
+    int init_y = 0, init_x =0;
+
+
+            init_x = -(8>>chroma)-2;
+            width = (8>>chroma)+2;
+            if(!borders[3])
+                height -= ((4>>chroma)+2);
+
+    dst = dst + (init_y*_stride + init_x);
+    src = src + (init_y*_stride + init_x);
+    for (k = 0; k < 4; k++)
+        band_table[(k + sao_left_class) & 31] = k + 1;
+        for (y = 0; y < height; y++) {
+            for (x = 0; x < width; x++) {
+                dst[x] = av_clip_pixel(src[x] + sao_offset_val[band_table[src[x] >> shift]]);
+                x++;
+                dst[x] = av_clip_pixel(src[x] + sao_offset_val[band_table[src[x] >> shift]]);
+            }
+            dst += stride;
+            src += stride;
+        }
+}
+
+static void FUNC(sao_band_filter_wpp_3)( uint8_t *_dst, uint8_t *_src, ptrdiff_t _stride, struct SAOParams *sao,int *borders, int width, int height, int c_idx)
+{
+    uint8_t *dst = _dst;
+    uint8_t *src = _src;
+    ptrdiff_t stride = _stride;
+    int band_table[32] = { 0 };
+    int k, y, x;
+    int chroma = c_idx!=0;
+    int shift = BIT_DEPTH - 5;
+    int *sao_offset_val = sao->offset_val[c_idx];
+    int sao_left_class = sao->band_position[c_idx];
+    
+    int init_y = 0, init_x =0;
+
+            init_y = -(4>>chroma)-2;
+            init_x = -(8>>chroma)-2;
+            width = (8>>chroma)+2;
+            height = (4>>chroma)+2;
+
+    dst = dst + (init_y*_stride + init_x);
+    src = src + (init_y*_stride + init_x);
+    for (k = 0; k < 4; k++)
+        band_table[(k + sao_left_class) & 31] = k + 1;
+        for (y = 0; y < height; y++) {
+            for (x = 0; x < width; x++) {
+                dst[x] = av_clip_pixel(src[x] + sao_offset_val[band_table[src[x] >> shift]]);
+                x++;
+                dst[x] = av_clip_pixel(src[x] + sao_offset_val[band_table[src[x] >> shift]]);
+            }
+            dst += stride;
+            src += stride;
+        }
+}
+#endif
 
 static void FUNC(sao_edge_filter_wpp)(uint8_t *_dst, uint8_t *_src, ptrdiff_t _stride, struct SAOParams *sao,int *borders, int _width, int _height, int c_idx, int class_index)
 {
@@ -3948,12 +4408,12 @@ uint8_t *src = _src;                                                    \
 ptrdiff_t srcstride = _srcstride/sizeof(pixel);                         \
 __m128i x1, rBuffer, rTemp, r0, r1, r2, x2, x3, x4,x5, y1,y2,y3;                  \
 const __m128i rk0 = _mm_set1_epi8(0);                                   \
-\
+																		\
 r0= QPEL2_H_FILTER_## H;                                            \
-\
+																		\
 /* LOAD src from memory to registers to limit memory bandwidth */     \
 if(width == 4){                                                             \
-\
+																			\
 for (y = 0; y < height; y+=2) {                                              \
 /* load data in register     */                                   \
 x1= _mm_loadu_si128((__m128i*)&src[-3]);                                        \
@@ -4033,7 +4493,7 @@ __m128i x1,x2,x3,x4,x5,x6,x7,x8, r0, r1, r2;                                \
 __m128i t1,t2,t3,t4,t5,t6,t7,t8;                                            \
 r1= QPEL2_FILTER_## V;                                                      \
 /* case width = 4 */                                                        \
-if(width == 4){                                                             \
+if(width == 4){        x=0;                                                    \
 for (y = 0; y < height; y+=2)  {                                             \
 r0= _mm_set1_epi16(0);                                                      \
 /* load data in register  */                                                \
@@ -4043,9 +4503,9 @@ x3= _mm_loadu_si128((__m128i*)&src[-srcstride]);                            \
 x4= _mm_loadu_si128((__m128i*)&src[0]);                                     \
 x5= _mm_loadu_si128((__m128i*)&src[srcstride]);                             \
 x6= _mm_loadu_si128((__m128i*)&src[2*srcstride]);                           \
-x7= _mm_loadu_si128((__m128i*)&src[3*srcstride]);                           \
+x7= _mm_loadu_si128((__m128i*)&src[3*srcstride]);    						\
 x8= QPEL2_X4VV_FILTER_## V;                                                  \
-    src += srcstride;                                                       \
+    src += srcstride;                                                      \
     t1= QPEL2_X3VV_FILTER_## V;                                                  \
     t2= _mm_loadu_si128((__m128i*)&src[-2*srcstride]);                          \
     t3= _mm_loadu_si128((__m128i*)&src[-srcstride]);                            \
@@ -4100,14 +4560,14 @@ r0= _mm_srli_epi16(r0, BIT_DEPTH - 8);                                      \
 r2= _mm_srli_epi16(r2, BIT_DEPTH - 8);                                      \
 /* give results back            */                                          \
     _mm_store_si128(&dst[0],r0); \
-    dst += dststride;                                                       \
-        _mm_store_si128(&dst[0],r2); \
+    dst += dststride;                                                         \
+        _mm_store_si128(&dst[0],r2);    \
 src += srcstride;                                                       \
 dst += dststride;                                                       \
 }                                                                           \
                                                                         \
 }else      /*case width >=8 */                                              \
-for (y = 0; y < height; y++)  {                                             \
+for (y = 0; y < height; y++)  {                                               \
 for (x = 0; x < width; x+=16)  {                                         \
 /* check if memory needs to be reloaded */                              \
 x1= QPEL2_X3VV_FILTER_## V;                                                  \

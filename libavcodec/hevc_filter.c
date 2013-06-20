@@ -161,7 +161,7 @@ void ff_hevc_sao_filter_CTB(HEVCContext *s, int x, int y, int c_idx_min, int c_i
         for(class_index = 0; class_index < class && c_idx>=c_idx_min && c_idx<c_idx_max; class_index++)    {
             switch (sao[class_index]->type_idx[c_idx]) {
                 case SAO_BAND:
-                    s->hevcdsp.sao_band_filter_wpp(dst, src, stride,  sao[class_index], edges, width, height, c_idx, classes[class_index]);
+                    s->hevcdsp.sao_band_filter_wpp[ classes[class_index] ](dst, src, stride,  sao[class_index], edges, width, height, c_idx);
                     
                     break;
                 case SAO_EDGE: {
