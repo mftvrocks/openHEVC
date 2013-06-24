@@ -59,8 +59,8 @@
  VPS and SVC Extentions
  */
 
-#define SVC_EXTENSION
-#define VPS_EXTENSION
+//#define SVC_EXTENSION
+//#define VPS_EXTENSION
 #ifdef SVC_EXTENSION
 #define SCALED_REF_LAYER_OFFSETS 1
 #define MAX_LAYERS  2
