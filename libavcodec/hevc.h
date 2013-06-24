@@ -59,8 +59,8 @@
  VPS and SVC Extentions
  */
 
-//#define SVC_EXTENSION
-//#define VPS_EXTENSION
+#define SVC_EXTENSION
+#define VPS_EXTENSION
 #ifdef SVC_EXTENSION
 #define SCALED_REF_LAYER_OFFSETS 1
 #define MAX_LAYERS  2
@@ -871,6 +871,7 @@ typedef struct HEVCSharedContext {
     DBParams *deblock;
     enum NALUnitType nal_unit_type;
     int temporal_id;  ///< temporal_id_plus1 - 1
+    int layer_id; 
     HEVCFrame *ref;
     HEVCFrame DPB[32];
     int poc;
