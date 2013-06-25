@@ -23,7 +23,7 @@
 #include "libavutil/pixdesc.h"
 #include "bit_depth_template.c"
 #include "hevcpred.h"
-//#define USE_SSE
+#define USE_SSE
 #ifdef USE_SSE
 #include <emmintrin.h>
 #include <x86intrin.h>
@@ -262,14 +262,13 @@ static void FUNCC(pred_planar_0)(uint8_t *_src, const uint8_t *_top, const uint8
 	tmp1= _mm_set_epi16(0,0,0,0,0,1,2,3);
 	tmp2= _mm_set_epi16(0,0,0,0,4,3,2,1);
 	mask= _mm_set_epi8(0,0,0,0,0,0,0,0,0,0,0,0,-1,-1,-1,-1);
-    for (y = 0; y < 4; y++){
 
-    	ly1= _mm_set1_epi16(_mm_extract_epi16(ly,y));
+    	ly1= _mm_set1_epi16(_mm_extract_epi16(ly,0));
 
     	c0= _mm_mullo_epi16(tmp1,ly1);
     	c1= _mm_mullo_epi16(tmp2,t0);
-    	c2= _mm_mullo_epi16(_mm_set1_epi16(3 - y),tx);
-    	c3= _mm_mullo_epi16(_mm_set1_epi16(1+y),l0);
+    	c2= _mm_mullo_epi16(_mm_set1_epi16(3),tx);
+    	c3= _mm_mullo_epi16(_mm_set1_epi16(1),l0);
 
     	c0= _mm_add_epi16(c0,c1);
     	c2= _mm_add_epi16(c2,c3);
@@ -280,9 +279,63 @@ static void FUNCC(pred_planar_0)(uint8_t *_src, const uint8_t *_top, const uint8
 
     	c0= _mm_packus_epi16(c0,_mm_setzero_si128());
 
-    	_mm_maskmoveu_si128(c0,mask,(__m128i*)(src+y*stride)); //store only 4 values
+    	_mm_maskmoveu_si128(c0,mask,(__m128i*)(src)); //store only 4 values
 
-    }
+    	ly1= _mm_set1_epi16(_mm_extract_epi16(ly,1));
+
+    	c0= _mm_mullo_epi16(tmp1,ly1);
+    	c1= _mm_mullo_epi16(tmp2,t0);
+    	c2= _mm_mullo_epi16(_mm_set1_epi16(2),tx);
+    	c3= _mm_mullo_epi16(_mm_set1_epi16(2),l0);
+
+    	c0= _mm_add_epi16(c0,c1);
+    	c2= _mm_add_epi16(c2,c3);
+    	c2= _mm_add_epi16(c2,add);
+    	c0= _mm_add_epi16(c0,c2);
+
+    	c0= _mm_srli_epi16(c0,3);
+
+    	c0= _mm_packus_epi16(c0,_mm_setzero_si128());
+
+    	_mm_maskmoveu_si128(c0,mask,(__m128i*)(src+stride)); //store only 4 values
+
+    	ly1= _mm_set1_epi16(_mm_extract_epi16(ly,2));
+
+    	c0= _mm_mullo_epi16(tmp1,ly1);
+    	c1= _mm_mullo_epi16(tmp2,t0);
+    	c2= _mm_mullo_epi16(_mm_set1_epi16(1),tx);
+    	c3= _mm_mullo_epi16(_mm_set1_epi16(3),l0);
+
+    	c0= _mm_add_epi16(c0,c1);
+    	c2= _mm_add_epi16(c2,c3);
+    	c2= _mm_add_epi16(c2,add);
+    	c0= _mm_add_epi16(c0,c2);
+
+    	c0= _mm_srli_epi16(c0,3);
+
+    	c0= _mm_packus_epi16(c0,_mm_setzero_si128());
+
+    	_mm_maskmoveu_si128(c0,mask,(__m128i*)(src+2*stride)); //store only 4 values
+
+    	ly1= _mm_set1_epi16(_mm_extract_epi16(ly,3));
+
+    	c0= _mm_mullo_epi16(tmp1,ly1);
+    	c1= _mm_mullo_epi16(tmp2,t0);
+    	c2= _mm_mullo_epi16(_mm_setzero_si128(),tx);
+    	c3= _mm_mullo_epi16(_mm_set1_epi16(4),l0);
+
+    	c0= _mm_add_epi16(c0,c1);
+    	c2= _mm_add_epi16(c2,c3);
+    	c2= _mm_add_epi16(c2,add);
+    	c0= _mm_add_epi16(c0,c2);
+
+    	c0= _mm_srli_epi16(c0,3);
+
+    	c0= _mm_packus_epi16(c0,_mm_setzero_si128());
+
+    	_mm_maskmoveu_si128(c0,mask,(__m128i*)(src+3*stride)); //store only 4 values
+
+
 }
 static void FUNCC(pred_planar_1)(uint8_t *_src, const uint8_t *_top, const uint8_t *_left,
                                ptrdiff_t stride, int log2_size)
