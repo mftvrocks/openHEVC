@@ -456,11 +456,11 @@ static void parse_vps_extension (HEVCContext *s, VPS *vps)  {
 int ff_hevc_decode_nal_vps(HEVCContext *s)
 {
     int i,j;
+
     HEVCLocalContext *lc = s->HEVClc;
     GetBitContext *gb = lc->gb;
     int vps_id = 0;
     VPS *vps = av_mallocz(sizeof(*vps));
-    
     av_log(s->avctx, AV_LOG_DEBUG, "Decoding VPS\n");
     
     if (!vps)
@@ -537,6 +537,7 @@ int ff_hevc_decode_nal_vps(HEVCContext *s)
         }
     }
     vps->vps_extension_flag = get_bits1(gb);
+    printf("vps->vps_extension_flag %d \n", vps->vps_extension_flag);
 #ifdef VPS_EXTENSION
     if(vps->vps_extension_flag){ /* vps_extension_flag */
         parse_vps_extension(s, vps);
@@ -582,20 +583,21 @@ int ff_hevc_decode_nal_sps(HEVCContext *s)
     }
 
     sps->temporal_id_nesting_flag = get_bits1(gb);
-    if (parse_ptl(s->HEVClc, &sps->ptl, s->HEVCsc->vps_list[sps->vps_id]->vps_max_sub_layers-1) < 0) {
+    if (parse_ptl(s->HEVClc, &sps->ptl, ((HEVCContext*)s->avctx->priv_data)->HEVCsc->vps_list[sps->vps_id]->vps_max_sub_layers-1) < 0) {
         av_log(s->avctx, AV_LOG_ERROR, "error decoding profile tier level\n");
         goto err;
     }
+
     sps_id = get_ue_golomb(gb);
     if (sps_id >= MAX_SPS_COUNT) {
         av_log(s->avctx, AV_LOG_ERROR, "SPS id out of range: %d\n", sps_id);
         goto err;
     }
-
+    
     sps->chroma_format_idc = get_ue_golomb(gb);
     if (sps->chroma_format_idc != 1)
         av_log(s->avctx, AV_LOG_ERROR, " chroma_format_idc != 1 : error SEI\n");
-
+    
     if (sps->chroma_format_idc == 3)
         sps->separate_colour_plane_flag = get_bits1(gb);
 
@@ -609,6 +611,7 @@ int ff_hevc_decode_nal_sps(HEVCContext *s)
         sps->pic_conf_win.top_offset    = get_ue_golomb(gb);
         sps->pic_conf_win.bottom_offset = get_ue_golomb(gb);
     }
+    
     if (s->avctx->flags2 & CODEC_FLAG2_IGNORE_CROP) {
         sps->pic_conf_win.left_offset   =
         sps->pic_conf_win.right_offset  =
@@ -657,7 +660,6 @@ int ff_hevc_decode_nal_sps(HEVCContext *s)
 
     sps->amp_enabled_flag  = get_bits1(gb);
     sps->sample_adaptive_offset_enabled_flag        = get_bits1(gb);
-
     sps->pcm_enabled_flag = get_bits1(gb);
     if (sps->pcm_enabled_flag) {
         int pcm_bit_depth_chroma;
@@ -683,7 +685,6 @@ int ff_hevc_decode_nal_sps(HEVCContext *s)
 
         sps->pcm.loop_filter_disable_flag = get_bits1(gb);
     }
-
     sps->num_short_term_ref_pic_sets = get_ue_golomb(gb);
     for (i = 0; i < sps->num_short_term_ref_pic_sets; i++) {
         if (ff_hevc_decode_short_term_rps(s->HEVClc, i, sps) < 0)
@@ -698,6 +699,7 @@ int ff_hevc_decode_nal_sps(HEVCContext *s)
             sps->used_by_curr_pic_lt_sps_flag[ i ] = get_bits1(gb);
         }
     }
+    
 
     sps->sps_temporal_mvp_enabled_flag   = get_bits1(gb);
 #if REF_IDX_MFM
@@ -745,7 +747,7 @@ int ff_hevc_decode_nal_sps(HEVCContext *s)
     s->HEVCsc->sps_list[sps_id] = sps;
     return 0;
 err:
-
+    printf("Error while decode sps \n"); 
     av_free(sps);
     return -1;
 }

@@ -329,7 +329,7 @@ static const uint8_t init_values[3][HEVC_CONTEXTS] = {
 #else
 #define printTitle
 #endif
-#if printLevel == 1
+#if printLevel == 3
 #define print_cabac(string, val) \
         printf("%s\n", string);  \
         printf("codIRange := %d codIOffset := %d binVal := %d\n", s->HEVClc->cc->range, s->HEVClc->cc->low>>17, val)

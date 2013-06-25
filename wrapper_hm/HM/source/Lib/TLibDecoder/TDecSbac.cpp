@@ -184,7 +184,7 @@ Void TDecSbac::updateContextTables( SliceType eSliceType, Int iQp )
   m_pcTDecBinIf->start();
 }
 
-#define printLevel 4
+#define printLevel 2
 #if printLevel == 1
 #define print_cabac(string, val) \
         printf("%s\n", string);  \
@@ -351,7 +351,7 @@ Void TDecSbac::parseIPCMInfo ( TComDataCU* pcCU, UInt uiAbsPartIdx, UInt uiDepth
 {
   UInt uiSymbol;
 
-      print_cabac("pcm_flag", 0);
+  print_cabac("pcm_flag", 0);
   m_pcTDecBinIf->decodeBinTrm(uiSymbol);
 
   if (uiSymbol)

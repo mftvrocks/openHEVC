@@ -96,8 +96,9 @@ void ff_hevc_dsp_init(HEVCDSPContext *hevcdsp, int bit_depth)
 /*    hevcdsp->weighted_pred_avg_chroma = FUNC(weighted_pred_avg, depth);*/  \
                                                                                 \
     hevcdsp->hevc_loop_filter_luma = FUNC(hevc_loop_filter_luma, depth);        \
-    hevcdsp->hevc_loop_filter_chroma = FUNC(hevc_loop_filter_chroma, depth);
-
+    hevcdsp->hevc_loop_filter_chroma = FUNC(hevc_loop_filter_chroma, depth); \
+    hevcdsp->upsample_base_layer_frame = FUNC(upsample_base_layer_frame, depth); 
+                                             
     switch (bit_depth) {
     case 9:
         HEVC_DSP(9);

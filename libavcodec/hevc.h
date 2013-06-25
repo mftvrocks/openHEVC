@@ -59,7 +59,7 @@
  VPS and SVC Extentions
  */
 
-//#define SVC_EXTENSION
+#define SVC_EXTENSION
 
 #ifdef SVC_EXTENSION
 #define VPS_EXTENSION
@@ -597,7 +597,15 @@ typedef struct SliceHeader {
     uint8_t slice_qp; ///< SliceQP
     int slice_ctb_addr_rs; ///< SliceCtbAddrRS
     int slice_cb_addr_zs; ///< SliceCbAddrZS
+#if REF_IDX_FRAMEWORK    
+    int inter_layer_pred_enabled_flag;
+#endif
     
+    
+#if JCTVC_M0458_INTERLAYER_RPS_SIG
+    int     active_num_ILR_ref_idx;        //< Active inter-layer reference pictures
+    int     inter_layer_pred_layer_idc[MAX_VPS_LAYER_ID_PLUS1];
+#endif
 } SliceHeader;
 
 enum SyntaxElement {
@@ -924,19 +932,24 @@ typedef struct HEVCSharedContext {
 
 } HEVCSharedContext;
 
+
+
+
 typedef struct HEVCContext {
     AVClass *c;  // needed by private avoptions
     AVCodecContext      *avctx;
     
     struct HEVCContext  *sList[MAX_NB_THREADS];
-    
     HEVCSharedContext   *HEVCsc;
-    
     HEVCLocalContext    *HEVClcList[MAX_NB_THREADS];
     HEVCLocalContext    *HEVClc;
-    
     uint8_t             threads_number;
     int                 decode_checksum_sei;
+    int id; 
+#ifdef SVC_EXTENSION
+    struct HEVCContext  *SHCVDecoder;
+#endif
+
 } HEVCContext;
 
 enum ScanType {
