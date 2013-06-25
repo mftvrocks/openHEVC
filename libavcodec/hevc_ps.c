@@ -491,7 +491,6 @@ int ff_hevc_decode_nal_vps(HEVCContext *s)
                vps->vps_max_sub_layers);
         goto err;
     }
-    printf("vps->vps_max_sub_layers-1 %d \n", vps->vps_max_sub_layers); 
     if (parse_ptl(lc, &vps->ptl, vps->vps_max_sub_layers-1) < 0) {
         av_log(s->avctx, AV_LOG_ERROR, "error decoding profile tier level");
         goto err;
@@ -500,7 +499,7 @@ int ff_hevc_decode_nal_vps(HEVCContext *s)
     
     i = vps->vps_sub_layer_ordering_info_present_flag ? 0 : (vps->vps_max_sub_layers - 1);
     for (; i < vps->vps_max_sub_layers; i++) {
-        vps->vps_max_dec_pic_buffering[i] = get_ue_golomb(gb);
+        vps->vps_max_dec_pic_buffering[i] = get_ue_golomb(gb) + 1;
         vps->vps_num_reorder_pics[i] = get_ue_golomb(gb);
         vps->vps_max_latency_increase[i] = get_ue_golomb(gb);
         
