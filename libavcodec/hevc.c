@@ -885,7 +885,7 @@ static void hls_residual_coding(HEVCContext *s, int x0, int y0, int log2_trafo_s
 }
 
 static void hls_transform_unit(HEVCContext *s, int x0, int  y0, int xBase, int yBase, int cb_xBase, int cb_yBase,
-                               int log2_trafo_size, int trafo_depth, int blk_idx) {
+                               int log2_cb_size, int log2_trafo_size, int trafo_depth, int blk_idx) {
     HEVCSharedContext *sc = s->HEVCsc;
     HEVCLocalContext *lc = s->HEVClc;
     int scan_idx = SCAN_DIAG;
@@ -910,7 +910,7 @@ static void hls_transform_unit(HEVCContext *s, int x0, int  y0, int xBase, int y
                 if (ff_hevc_cu_qp_delta_sign_flag(s) == 1)
                     lc->tu.cu_qp_delta = -lc->tu.cu_qp_delta;
             lc->tu.is_cu_qp_delta_coded = 1;
-            ff_hevc_set_qPy(s, x0, y0, cb_xBase, cb_yBase);
+            ff_hevc_set_qPy(s, x0, y0, cb_xBase, cb_yBase, log2_cb_size);
         }
 
         if (lc->cu.pred_mode == MODE_INTRA && log2_trafo_size < 4) {
@@ -1035,7 +1035,7 @@ static void hls_transform_tree(HEVCContext *s, int x0, int y0, int xBase, int yB
         }
 
         hls_transform_unit(s, x0, y0, xBase, yBase, cb_xBase, cb_yBase,
-                           log2_trafo_size, trafo_depth, blk_idx);
+                log2_cb_size, log2_trafo_size, trafo_depth, blk_idx);
 
         // TODO: store cbf_luma somewhere else
         if (lc->tt.cbf_luma)
@@ -1649,7 +1649,6 @@ static void hls_coding_unit(HEVCContext *s, int x0, int y0, int log2_cb_size)
     int x_cb             = x0 >> log2_min_cb_size;
     int y_cb             = y0 >> log2_min_cb_size;
     int x, y;
-    int qp_y;
     lc->cu.x = x0;
     lc->cu.y = y0;
     lc->cu.rqt_root_cbf = 1;
@@ -1768,23 +1767,11 @@ static void hls_coding_unit(HEVCContext *s, int x0, int y0, int log2_cb_size)
             }
         }
     }
-    qp_y = lc->qp_y;
-    if( sc->pps->cu_qp_delta_enabled_flag && lc->tu.is_cu_qp_delta_coded == 0) {
-        int curr_qp_y = lc->qp_y;
-        ff_hevc_set_qPy(s, x0, y0, x0, y0);
-        qp_y = lc->qp_y;
-        if ( log2_cb_size < sc->sps->log2_ctb_size - sc->pps->diff_cu_qp_delta_depth ) {
-            if ((x0&cb_size)==0 && (y0&cb_size)==0)
-                lc->curr_qp_y = qp_y;
-            if ( (x0&((1<<sc->sps->log2_ctb_size)-1))!=0 || (y0&((1<<sc->sps->log2_ctb_size)-1))!=0 )
-           		lc->qp_y = curr_qp_y;
-            if ((x0&cb_size)!=0 && (y0&cb_size)!=0)
-                lc->qp_y = lc->curr_qp_y;
-        }
-    }
+    if( sc->pps->cu_qp_delta_enabled_flag && lc->tu.is_cu_qp_delta_coded == 0)
+        ff_hevc_set_qPy(s, x0, y0, x0, y0, log2_cb_size);
     x = y_cb * pic_width_in_ctb + x_cb;
     for (y = 0; y < length; y++) {
-        memset(&sc->qp_y_tab[x], qp_y, length);
+        memset(&sc->qp_y_tab[x], lc->qp_y, length);
         x += pic_width_in_ctb;
     }
     set_ct_depth(s, x0, y0, log2_cb_size, lc->ct.depth);
@@ -1794,7 +1781,6 @@ static int hls_coding_quadtree(HEVCContext *s, int x0, int y0, int log2_cb_size,
 {
     HEVCSharedContext *sc = s->HEVCsc;
     HEVCLocalContext *lc = s->HEVClc;
-    lc->isFirstQPgroup = x0 == 0 && (y0&((1<<sc->sps->log2_ctb_size)-1)) == 0 ? sc->pps->entropy_coding_sync_enabled_flag : 0;
     lc->ct.depth = cb_depth;
     if ((x0 + (1 << log2_cb_size) <= sc->sps->pic_width_in_luma_samples) &&
         (y0 + (1 << log2_cb_size) <= sc->sps->pic_height_in_luma_samples) &&
@@ -1817,7 +1803,6 @@ static int hls_coding_quadtree(HEVCContext *s, int x0, int y0, int log2_cb_size,
         int x1 = x0 + cb_size;
         int y1 = y0 + cb_size;
         more_data = hls_coding_quadtree(s, x0, y0, log2_cb_size - 1, cb_depth + 1);
-
         if (more_data && x1 < sc->sps->pic_width_in_luma_samples)
             more_data = hls_coding_quadtree(s, x1, y0, log2_cb_size - 1, cb_depth + 1);
         if (more_data && y1 < sc->sps->pic_height_in_luma_samples)
@@ -1871,6 +1856,10 @@ static void hls_decode_neighbour(HEVCContext *s, int x_ctb, int y_ctb, int ctb_a
         lc->ctb_up_flag   = ((y_ctb > 0)  && (ctb_addr_in_slice >= sc->sps->pic_width_in_ctbs) && (sc->pps->tile_id[ctb_addr_ts] == sc->pps->tile_id[sc->pps->ctb_addr_rs_to_ts[ctb_addr_rs - sc->sps->pic_width_in_ctbs]]));
         lc->ctb_up_right_flag = ((y_ctb > 0)  && (ctb_addr_in_slice+1 >= sc->sps->pic_width_in_ctbs) && (sc->pps->tile_id[ctb_addr_ts] == sc->pps->tile_id[sc->pps->ctb_addr_rs_to_ts[ctb_addr_rs+1 - sc->sps->pic_width_in_ctbs]]));
         lc->ctb_up_left_flag = ((x_ctb > 0) && (y_ctb > 0)  && (ctb_addr_in_slice-1 >= sc->sps->pic_width_in_ctbs) && (sc->pps->tile_id[ctb_addr_ts] == sc->pps->tile_id[sc->pps->ctb_addr_rs_to_ts[ctb_addr_rs-1 - sc->sps->pic_width_in_ctbs]]));
+        if (sc->pps->entropy_coding_sync_enabled_flag)
+            lc->isFirstQPgroup = x_ctb == 0 && (y_ctb&((1<<sc->sps->log2_ctb_size)-1)) == 0 ? 1 : 0;
+        else if (sc->pps->tiles_enabled_flag)
+            lc->isFirstQPgroup = (x_ctb > 0) && sc->pps->tile_id[ctb_addr_ts] != sc->pps->tile_id[sc->pps->ctb_addr_rs_to_ts[ctb_addr_rs-1]];
 }
 
 static int hls_decode_entry(AVCodecContext *avctxt, void *isFilterThread)
@@ -2275,7 +2264,7 @@ static int hevc_decode_frame(AVCodecContext *avctx, void *data, int *got_output,
                 if ((ret = ff_hevc_set_new_ref(s, &sc->sao_frame, sc->poc))< 0)
                     return ret;
             } else {
-                if ((ret = ff_hevc_set_new_ref(s, &sc->frame, sc->poc))< 0)
+               if ((ret = ff_hevc_set_new_ref(s, &sc->frame, sc->poc))< 0)
                     return ret;
             }
         }
