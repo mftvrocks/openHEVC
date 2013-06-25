@@ -175,15 +175,15 @@ static int parse_ptl(HEVCLocalContext *s, PTL *ptl, int max_num_sub_layers)
     GetBitContext *gb = s->gb;
     decode_profile_tier_level(s, &ptl->general_PTL);
     ptl->general_PTL.level_idc = get_bits(gb, 8);
-    for (i = 0; i < max_num_sub_layers - 1; i++) {
+    for (i = 0; i < max_num_sub_layers; i++) {
         ptl->sub_layer_profile_present_flag[i] = get_bits1(gb);
         ptl->sub_layer_level_present_flag[i] = get_bits1(gb);
     }
-    if (max_num_sub_layers - 1 > 0)
-        for (i = max_num_sub_layers - 1; i < 8; i++) {
+    if (max_num_sub_layers > 0)
+        for (i = max_num_sub_layers ; i < 8; i++) {
             skip_bits(gb, 2); // reserved_zero_2bits[i]
         }
-    for (i = 0; i < max_num_sub_layers - 1; i++) {
+    for (i = 0; i < max_num_sub_layers; i++) {
         if (ptl->sub_layer_profile_present_flag[i]) {
             decode_profile_tier_level(s, &ptl->sub_layer_PTL[i]);
             ptl->sub_layer_PTL[i].level_idc = get_bits(gb, 8);
@@ -491,7 +491,7 @@ int ff_hevc_decode_nal_vps(HEVCContext *s)
                vps->vps_max_sub_layers);
         goto err;
     }
-    
+    printf("vps->vps_max_sub_layers-1 %d \n", vps->vps_max_sub_layers); 
     if (parse_ptl(lc, &vps->ptl, vps->vps_max_sub_layers-1) < 0) {
         av_log(s->avctx, AV_LOG_ERROR, "error decoding profile tier level");
         goto err;
