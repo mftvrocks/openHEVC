@@ -3406,6 +3406,7 @@ static void FUNC(sao_edge_filter_wpp_0)(uint8_t *_dst, uint8_t *_src, ptrdiff_t 
     const uint8_t edge_idx[] = { 1, 2, 0, 3, 4 };
 
     int init_x = 0, init_y = 0, width = _width, height = _height;
+    __m128i x0,x1,x2,x3;
 
 #define CMP(a, b) ((a) > (b) ? 1 : ((a) == (b) ? 0 : -1))
 
@@ -3413,7 +3414,6 @@ static void FUNC(sao_edge_filter_wpp_0)(uint8_t *_dst, uint8_t *_src, ptrdiff_t 
                 width -= ((8>>chroma)+2) ;
             if(!borders[3] )
                 height -= ((4>>chroma)+2);
-
     dst = dst + (init_y*_stride + init_x);
     src = src + (init_y*_stride + init_x);
     init_y = init_x = 0;
@@ -3421,6 +3421,7 @@ static void FUNC(sao_edge_filter_wpp_0)(uint8_t *_dst, uint8_t *_src, ptrdiff_t 
         if (borders[0]) {
             int offset_val = sao_offset_val[0];
             int y_stride   = 0;
+
             for (y = 0; y < height; y++) {
                 dst[y_stride] = av_clip_pixel(src[y_stride] + offset_val);
                 y_stride += stride;
@@ -3440,17 +3441,25 @@ static void FUNC(sao_edge_filter_wpp_0)(uint8_t *_dst, uint8_t *_src, ptrdiff_t 
     }
     if (sao_eo_class != SAO_EO_HORIZ) {
         if (borders[1]){
-            int offset_val = sao_offset_val[0];
-            for (x = init_x; x < width; x++) {
-                dst[x] = av_clip_pixel(src[x] + offset_val);
+            //int offset_val = sao_offset_val[0];
+            x1= _mm_set1_epi8(sao_offset_val[0]);
+            for (x = init_x; x < width; x+=16) {
+            	x0= _mm_loadu_si128((__m128i*)(src+x));
+            	x0= _mm_add_epi8(x0,x1);
+            	_mm_storeu_si128((__m128i*)(dst+x),x0);
+                //dst[x] = av_clip_pixel(src[x] + offset_val);
             }
             init_y = 1;
         }
         if (borders[3]){
-            int offset_val = sao_offset_val[0];
+            //int offset_val = sao_offset_val[0];
+            x1= _mm_set1_epi8(sao_offset_val[0]);
             int y_stride   = stride * (_height-1);
-            for (x = init_x; x < width; x++) {
-                dst[x + y_stride] = av_clip_pixel(src[x + y_stride] + offset_val);
+            for (x = init_x; x < width; x+=16) {
+            	x0= _mm_loadu_si128((__m128i*)(src+x+y_stride));
+            	            	x0= _mm_add_epi8(x0,x1);
+            	            	_mm_storeu_si128((__m128i*)(dst+x+y_stride),x0);
+               // dst[x + y_stride] = av_clip_pixel(src[x + y_stride] + offset_val);
             }
             height--;
         }
