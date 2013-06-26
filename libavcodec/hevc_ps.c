@@ -503,7 +503,7 @@ int ff_hevc_decode_nal_vps(HEVCContext *s)
         vps->vps_num_reorder_pics[i] = get_ue_golomb(gb);
         vps->vps_max_latency_increase[i] = get_ue_golomb(gb);
         
-        if (vps->vps_max_dec_pic_buffering[i] >= MAX_DPB_SIZE) {
+        if (vps->vps_max_dec_pic_buffering[i] > MAX_DPB_SIZE) {
             av_log(s->avctx, AV_LOG_ERROR, "vps_max_dec_pic_buffering_minus1 out of range: %d\n",
                    vps->vps_max_dec_pic_buffering[i] - 1);
             goto err;
