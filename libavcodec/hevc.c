@@ -392,10 +392,10 @@ static int hls_slice_header(HEVCContext *s)
 #if JCTVC_M0458_INTERLAYER_RPS_SIG
         sc->sh.active_num_ILR_ref_idx = 0;
         NumILRRefIdx = ((HEVCContext*)s->avctx->priv_data)->HEVCsc->vps->m_numDirectRefLayers[sc->layer_id];
-        printf("NumILRRefIdx %d \n", NumILRRefIdx);
+      //  printf("NumILRRefIdx %d \n", NumILRRefIdx);
         if(sc->layer_id > 0 && NumILRRefIdx>0) {
             sc->sh.inter_layer_pred_enabled_flag = get_bits1(gb);
-            printf("sc->sh.inter_layer_pred_enabled_flag %d \n", sc->sh.inter_layer_pred_enabled_flag);
+       //     printf("sc->sh.inter_layer_pred_enabled_flag %d \n", sc->sh.inter_layer_pred_enabled_flag);
             if(sc->sh.inter_layer_pred_enabled_flag) {
                 if(NumILRRefIdx>1)  {
                     int numBits = 1;
@@ -406,16 +406,16 @@ static int hls_slice_header(HEVCContext *s)
                             sc->sh.active_num_ILR_ref_idx = get_bits(gb, numBits) + 1;
                     else
                         sc->sh.active_num_ILR_ref_idx = 1;
-                    printf("sc->sh.active_num_ILR_ref_idx A %d \n", sc->sh.active_num_ILR_ref_idx);
+             //       printf("sc->sh.active_num_ILR_ref_idx A %d \n", sc->sh.active_num_ILR_ref_idx);
                     for(i = 0; i < sc->sh.active_num_ILR_ref_idx; i++ ){
                         sc->sh.inter_layer_pred_layer_idc[i] =  get_bits(gb, numBits);
-                        printf("i: %d sc->sh.inter_layer_pred_layer_idc[i]: %d \n", i, sc->sh.inter_layer_pred_layer_idc[i]);
+          //              printf("i: %d sc->sh.inter_layer_pred_layer_idc[i]: %d \n", i, sc->sh.inter_layer_pred_layer_idc[i]);
                     }
                 }   else    {
                     sc->sh.active_num_ILR_ref_idx = 1;
                     sc->sh.inter_layer_pred_layer_idc[0] = 0;
                 }
-                printf("sc->sh.active_num_ILR_ref_idx %d sc->sh.inter_layer_pred_layer_idc[0] %d \n", sc->sh.active_num_ILR_ref_idx, sc->sh.inter_layer_pred_layer_idc[0]);
+  //              printf("sc->sh.active_num_ILR_ref_idx %d sc->sh.inter_layer_pred_layer_idc[0] %d \n", sc->sh.active_num_ILR_ref_idx, sc->sh.inter_layer_pred_layer_idc[0]);
             }
         }
 #else
@@ -427,6 +427,8 @@ static int hls_slice_header(HEVCContext *s)
             sh->slice_sample_adaptive_offset_flag[0] = get_bits1(gb);
             sh->slice_sample_adaptive_offset_flag[2] =
             sh->slice_sample_adaptive_offset_flag[1] = get_bits1(gb);
+      //       printf("slice_sample_adaptive_offset_flag[0] %d \n", sh->slice_sample_adaptive_offset_flag[0]);
+      //       printf("slice_sample_adaptive_offset_flag[1] %d \n", sh->slice_sample_adaptive_offset_flag[1]);
         }
 
         sh->num_ref_idx_l0_active = 0;
@@ -437,33 +439,58 @@ static int hls_slice_header(HEVCContext *s)
             if (sh->slice_type == B_SLICE)
                 sh->num_ref_idx_l1_active = sc->pps->num_ref_idx_l1_default_active;
             sh->num_ref_idx_active_override_flag = get_bits1(gb);
+      //      printf(" sh->num_ref_idx_active_override_flag  %d \n", sh->num_ref_idx_active_override_flag );
 
             if (sh->num_ref_idx_active_override_flag) {
                 sh->num_ref_idx_l0_active = get_ue_golomb(gb) + 1;
-                if (sh->slice_type == B_SLICE)
+   //             printf(" sh->num_ref_idx_l0_active  %d \n", sh->num_ref_idx_l0_active );
+                if (sh->slice_type == B_SLICE){
                     sh->num_ref_idx_l1_active = get_ue_golomb(gb) + 1;
+           //         printf(" sh->num_ref_idx_l1_active  %d \n", sh->num_ref_idx_l1_active );
+                }
             }
             sh->ref_pic_list_modification_flag_lx[0] = 0;
             sh->ref_pic_list_modification_flag_lx[1] = 0;
             NumPocTotalCurr = ff_hevc_get_NumPocTotalCurr(s);
+        //    printf(" NumPocTotalCurr %d \n",  NumPocTotalCurr);
             if (sc->pps->lists_modification_present_flag && NumPocTotalCurr > 1) {
                 sh->ref_pic_list_modification_flag_lx[0] = get_bits1(gb);
+        //        printf(" sh->ref_pic_list_modification_flag_lx[0]e  %d \n", sh->ref_pic_list_modification_flag_lx[0] );
                 if( sh->ref_pic_list_modification_flag_lx[0] == 1 )
-                    for (i = 0; i < sh->num_ref_idx_l0_active; i++)
+                    for (i = 0; i < sh->num_ref_idx_l0_active; i++){
                         sh->list_entry_lx[0][i] = get_bits(gb, av_ceil_log2_c(NumPocTotalCurr));
+                //        printf(" i: %d sh->list_entry_lx[0][i]  %d %d\n", i, sh->ref_pic_list_modification_flag_lx[0], av_ceil_log2_c(NumPocTotalCurr) );
+                    }
                 if (sh->slice_type == B_SLICE) {
                     sh->ref_pic_list_modification_flag_lx[1] = get_bits1(gb);
+               //     printf(" sh->ref_pic_list_modification_flag_lx[1]  %d \n",sh->ref_pic_list_modification_flag_lx[1] );
                     if (sh->ref_pic_list_modification_flag_lx[1] == 1)
-                        for (i = 0; i < sh->num_ref_idx_l1_active; i++)
+                        for (i = 0; i < sh->num_ref_idx_l1_active; i++){
                             sh->list_entry_lx[1][i] = get_bits(gb, av_ceil_log2_c(NumPocTotalCurr));
+                //            printf(" i: %d sh->list_entry_lx[1][i]  %d %d \n",i, sh->ref_pic_list_modification_flag_lx[1], av_ceil_log2_c(NumPocTotalCurr) );
+                        }
+                }
+            }/*
+            if(sh->slice_type != I_SLICE) {
+                
+                if(!sc->pps->lists_modification_present_flag || NumPocTotalCurr <=1)    {
+                    
+                } else {
+                    sh->ref_pic_list_modification_flag_lx[0] = get_bits1(gb);
+                }
+                if() {
+                
                 }
             }
-
-            if (sh->slice_type == B_SLICE)
+*/
+            if (sh->slice_type == B_SLICE){
                 sh->mvd_l1_zero_flag = get_bits1(gb);
+      //          printf("sh->mvd_l1_zero_flag %d \n", sh->mvd_l1_zero_flag);
+            }
 
             if (sc->pps->cabac_init_present_flag) {
                 sh->cabac_init_flag = get_bits1(gb);
+         //       printf("sh->cabac_init_flag %d \n", sh->cabac_init_flag);
             }
             if (sh->slice_temporal_mvp_enabled_flag) {
                 sh->collocated_from_l0_flag = 1;
@@ -483,6 +510,7 @@ static int hls_slice_header(HEVCContext *s)
         }
         ff_hevc_set_ref_poc_list(s);
         sh->slice_qp_delta = get_se_golomb(gb);
+     //   printf("sh->slice_qp_delta %d \n", sh->slice_qp_delta);
         if (sc->pps->pic_slice_level_chroma_qp_offsets_present_flag) {
             sh->slice_cb_qp_offset = get_se_golomb(gb);
             sh->slice_cr_qp_offset = get_se_golomb(gb);
@@ -507,6 +535,7 @@ static int hls_slice_header(HEVCContext *s)
                 sh->slice_sample_adaptive_offset_flag[1] ||
                 !sh->disable_deblocking_filter_flag)) {
             sh->slice_loop_filter_across_slices_enabled_flag = get_bits1(gb);
+             //           printf("sh->slice_loop_filter_across_slices_enabled_flag %d \n", sh->slice_loop_filter_across_slices_enabled_flag);
         } else {
             sh->slice_loop_filter_across_slices_enabled_flag =
             sc->pps->seq_loop_filter_across_slices_enabled_flag;
@@ -556,6 +585,7 @@ static int hls_slice_header(HEVCContext *s)
     // Inferred parameters
     
     sh->slice_qp = 26 + sc->pps->pic_init_qp_minus26 + sh->slice_qp_delta;
+   // printf("sc->pps->pic_init_qp_minus26 %d sh->slice_qp_delta %d sh->slice_qp %d \n", 26+sc->pps->pic_init_qp_minus26, sh->slice_qp_delta, sh->slice_qp);
     sh->slice_ctb_addr_rs = sh->slice_address;
     sh->slice_cb_addr_zs = sh->slice_address <<
                            (sc->sps->log2_diff_max_min_coding_block_size << 1);
@@ -1915,11 +1945,17 @@ static void hls_decode_neighbour(HEVCContext *s, int x_ctb, int y_ctb, int ctb_a
 static int hls_decode_entry(AVCodecContext *avctxt, void *isFilterThread)
 {
     HEVCContext *s  = avctxt->priv_data;
+    
+#ifdef SVC_EXTENSION
     HEVCSharedContext *sc;
     if(s->HEVCsc->layer_id)
         s = s->SHCVDecoder;
     sc = s->HEVCsc;
-    printf("Decoder ID %d \n", s->id);
+#else
+    HEVCSharedContext *sc = s->HEVCsc;
+#endif
+    
+ //   printf("Decoder ID %d \n", s->id);
     int ctb_size    = 1 << sc->sps->log2_ctb_size;
    
     int more_data   = 1;
@@ -1943,7 +1979,7 @@ static int hls_decode_entry(AVCodecContext *avctxt, void *isFilterThread)
         ctb_addr_ts++;
         save_states(s, ctb_addr_ts);
         hls_filters(s, x_ctb, y_ctb, ctb_size);
-        printf("x_ctb %d y_ctb %d %d \n", y_ctb, x_ctb, sc->sps->pic_width_in_luma_samples);
+      //  printf("x_ctb %d y_ctb %d %d \n", y_ctb, x_ctb, sc->sps->pic_width_in_luma_samples);
     }
     if (x_ctb + ctb_size >= sc->sps->pic_width_in_luma_samples && y_ctb + ctb_size >= sc->sps->pic_height_in_luma_samples)
         hls_filter(s, x_ctb, y_ctb);
@@ -2217,7 +2253,6 @@ static void switch_to_shvc_instance(HEVCContext *s)  {
     shvc->HEVCsc->skipped_bytes_pos = s->HEVCsc->skipped_bytes_pos;
     shvc->threads_number = s->threads_number;
     shvc->decode_checksum_sei = s->decode_checksum_sei;
-    s = shvc;
 }
 #endif
 
@@ -2261,8 +2296,8 @@ static int hevc_decode_frame(AVCodecContext *avctx, void *data, int *got_output,
 #else
         return avpkt->size;
 #endif
-    printf("Packet size %d %d \n", avpkt->size, s->HEVCsc->nal_unit_type);
-    init_get_bits(s->HEVClc->gb, avpkt->data+2, (avpkt->size-2)*8);
+//    printf("Packet size %d %d \n", avpkt->size, sc->nal_unit_type);
+    init_get_bits(lc->gb, avpkt->data+2, (avpkt->size-2)*8);
     switch (sc->nal_unit_type) {
     case NAL_VPS:
         ff_hevc_decode_nal_vps(s);
@@ -2359,7 +2394,7 @@ static int hevc_decode_frame(AVCodecContext *avctx, void *data, int *got_output,
         }
         printf("ctb_addr_ts: %d sc->sps->pic_width_in_ctbs * sc->sps->pic_height_in_ctbs: %d \n", ctb_addr_ts, sc->sps->pic_width_in_ctbs * sc->sps->pic_height_in_ctbs);
             
-        if (s->decode_checksum_sei /*&& ctb_addr_ts >= (sc->sps->pic_width_in_ctbs * sc->sps->pic_height_in_ctbs)*/) {
+        if (s->decode_checksum_sei && ctb_addr_ts >= (sc->sps->pic_width_in_ctbs * sc->sps->pic_height_in_ctbs)) {
 #ifdef POC_DISPLAY_MD5
             AVFrame *frame = (AVFrame *) data;
             int poc        = poc_display;
@@ -2393,12 +2428,12 @@ static int hevc_decode_frame(AVCodecContext *avctx, void *data, int *got_output,
         return avpkt->size;
     }
 
-    av_log(s->avctx, AV_LOG_DEBUG, "%d bits left in unit\n", get_bits_left(gb));
-  //  printf("poc %d \n", s->HEVCsc->poc);
-    if(s->HEVCsc->poc==4){
+    av_log(s->avctx, AV_LOG_DEBUG, "%d bits left in unit\n", get_bits_left(lc->gb));
+  // printf("poc %d \n", s->HEVCsc->poc);
+  /*  if(sc->poc==4){
         printf("s->id %d \n", s->id);
         exit(-1);
-    }
+    }*/
     return avpkt->size;
 }
 
@@ -2457,9 +2492,7 @@ static av_cold int hevc_decode_init(AVCodecContext *avctx)
     s->SHCVDecoder->id = 1;
     sc->tmp_frame = av_frame_alloc();
     sc->cabac_state = av_malloc(HEVC_CONTEXTS);
-    
-    
-    
+        
     
     lc->gb = av_malloc(sizeof(GetBitContext));
     lc->cc = av_malloc(sizeof(CABACContext));

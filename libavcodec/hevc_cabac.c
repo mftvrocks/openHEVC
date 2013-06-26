@@ -329,7 +329,7 @@ static const uint8_t init_values[3][HEVC_CONTEXTS] = {
 #else
 #define printTitle
 #endif
-#if printLevel == 3
+#if printLevel == 1
 #define print_cabac(string, val) \
         printf("%s\n", string);  \
         printf("codIRange := %d codIOffset := %d binVal := %d\n", s->HEVClc->cc->range, s->HEVClc->cc->low>>17, val)
@@ -376,7 +376,7 @@ void ff_hevc_cabac_reinit(HEVCLocalContext *lc)
 }
 void ff_hevc_cabac_init_decoder(HEVCContext *s)
 {
-    printTitle("ff_hevc_cabac_init_decoder\n");
+    printTitle("ff_hevc_cabac_init_decoder %d \n", s->id);
     GetBitContext *gb = s->HEVClc->gb;
     skip_bits(gb, 1);
     align_get_bits(gb);
@@ -388,9 +388,14 @@ void ff_hevc_cabac_init_state(HEVCContext *s)
 {
     printTitle("ff_hevc_cabac_init_state\n");
     int i;
-    HEVCSharedContext *sc = s->HEVCsc; 
+    HEVCSharedContext *sc = s->HEVCsc;
+   // enum SliceType slicetype = sc->sh.slice_type;
+ //   printf("slicetype: %d cabac_init_present_flag: %d cabac_init_flag: %d \n",sc->sh.slice_type, sc->pps->cabac_init_present_flag, sc->sh.cabac_init_flag );
+   // if(sc->pps->cabac_init_present_flag && sc->sh.cabac_init_flag)  {
+        
     int init_type = 2 - sc->sh.slice_type;
     ff_init_cabac_states(s->HEVClc->cc);
+ //   printf("sc->sh.slice_type %d slicetype %d \n", sc->sh.slice_type, sc->sh.slice_type);
     if (sc->sh.cabac_init_flag && sc->sh.slice_type != I_SLICE)
         init_type ^= 3;
 
@@ -403,7 +408,10 @@ void ff_hevc_cabac_init_state(HEVCContext *s)
         if (pre > 124)
             pre = 124 + (pre & 1);
         s->HEVClc->cabac_state[i] =  pre;
+     //   printf("i: %d pre: %d ", i, pre);
+        
     }
+   // printf("\n");
 }
 
 void ff_hevc_cabac_init(HEVCContext *s, int ctb_addr_ts)

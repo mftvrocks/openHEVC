@@ -59,7 +59,7 @@
  VPS and SVC Extentions
  */
 
-#define SVC_EXTENSION
+//#define SVC_EXTENSION
 
 #ifdef SVC_EXTENSION
 #define VPS_EXTENSION

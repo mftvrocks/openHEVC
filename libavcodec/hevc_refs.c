@@ -329,9 +329,30 @@ void ff_hevc_set_ref_poc_list(HEVCContext *s)
     }
 }
 
+   
+
 int ff_hevc_get_NumPocTotalCurr(HEVCContext *s) {
     int NumPocTotalCurr = 0;
     int i;
+    
+#if REF_IDX_FRAMEWORK
+    if( s->HEVCsc->sh.slice_type == I_SLICE || (s->HEVCsc->layer_id &&
+                                    (s->HEVCsc->nal_unit_type >= NAL_BLA_W_LP) &&
+                                    (s->HEVCsc->nal_unit_type<= NAL_CRA_NUT ) ) )
+#else
+        if (s->HEVCsc->sh.slice_type == I_SLICE)
+#endif
+        {
+#if REF_IDX_FRAMEWORK
+#if JCTVC_M0458_INTERLAYER_RPS_SIG
+            return s->HEVCsc->sh.active_num_ILR_ref_idx;
+#else
+            return s->HEVCsc->vps->m_numDirectRefLayers[s->HEVCsc->layer_id];
+#endif 
+#else
+            return 0;
+#endif
+        }
     ShortTermRPS *rps     = s->HEVCsc->sh.short_term_rps;
     LongTermRPS *long_rps = &s->HEVCsc->sh.long_term_rps;
     if (rps != NULL) {
@@ -345,5 +366,15 @@ int ff_hevc_get_NumPocTotalCurr(HEVCContext *s) {
             if( long_rps->UsedByCurrPicLt[ i ] == 1 )
                 NumPocTotalCurr++;
     }
+#if REF_IDX_FRAMEWORK
+    if(s->HEVCsc->layer_id)
+    {
+#if JCTVC_M0458_INTERLAYER_RPS_SIG
+        NumPocTotalCurr += s->HEVCsc->sh.active_num_ILR_ref_idx;
+#else
+        NumPocTotalCurr += s->HEVCsc->vps->m_numDirectRefLayers[s->HEVCsc->layer_id];
+#endif
+    }
+#endif
     return NumPocTotalCurr;
 }
