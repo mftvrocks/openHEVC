@@ -1796,7 +1796,6 @@ static int hls_coding_quadtree(HEVCContext *s, int x0, int y0, int log2_cb_size,
         int x1 = x0 + cb_size;
         int y1 = y0 + cb_size;
         more_data = hls_coding_quadtree(s, x0, y0, log2_cb_size - 1, cb_depth + 1);
-
         if (more_data && x1 < sc->sps->pic_width_in_luma_samples)
             more_data = hls_coding_quadtree(s, x1, y0, log2_cb_size - 1, cb_depth + 1);
         if (more_data && y1 < sc->sps->pic_height_in_luma_samples)
@@ -2082,23 +2081,22 @@ static int hls_slice_data_wpp(HEVCContext *s, AVPacket *avpkt)
 static int hls_nal_unit(HEVCContext *s)
 {
     GetBitContext *gb = s->HEVClc->gb;
-    int nuh_layer_id;
 
     if (get_bits1(gb) != 0)
         return AVERROR_INVALIDDATA;
 
     s->HEVCsc->nal_unit_type = get_bits(gb, 6);
 
-    nuh_layer_id = get_bits(gb, 6);
+    s->HEVCsc->layer_id = get_bits(gb, 6);
     s->HEVCsc->temporal_id = get_bits(gb, 3) - 1;
     if (s->HEVCsc->temporal_id < 0)
         return AVERROR_INVALIDDATA;
 
     av_log(s->avctx, AV_LOG_DEBUG,
            "nal_unit_type: %d, nuh_layer_id: %dtemporal_id: %d\n",
-           s->HEVCsc->nal_unit_type, nuh_layer_id, s->HEVCsc->temporal_id);
+           s->HEVCsc->nal_unit_type, s->HEVCsc->layer_id, s->HEVCsc->temporal_id);
 
-    return (nuh_layer_id == 0);
+    return (s->HEVCsc->layer_id == 0);
 }
 
 static void printf_ref_pic_list(HEVCContext *s)
@@ -2269,7 +2267,7 @@ static int hevc_decode_frame(AVCodecContext *avctx, void *data, int *got_output,
                 if ((ret = ff_hevc_set_new_ref(s, &sc->sao_frame, sc->poc))< 0)
                     return ret;
             } else {
-                if ((ret = ff_hevc_set_new_ref(s, &sc->frame, sc->poc))< 0)
+               if ((ret = ff_hevc_set_new_ref(s, &sc->frame, sc->poc))< 0)
                     return ret;
             }
         }
@@ -2331,9 +2329,9 @@ static av_cold int hevc_decode_init(AVCodecContext *avctx)
     s->avctx = avctx;
     HEVCSharedContext *sc;
     HEVCLocalContext *lc;
-
-    s->HEVCsc = av_malloc(sizeof(HEVCSharedContext));
-    s->HEVClc = av_malloc(sizeof(HEVCLocalContext));
+    
+    s->HEVCsc = av_mallocz(sizeof(HEVCSharedContext));
+    s->HEVClc = av_mallocz(sizeof(HEVCLocalContext));
     lc = s->HEVClcList[0] = s->HEVClc;
     sc = s->HEVCsc;
     s->sList[0] = s;
@@ -2359,6 +2357,7 @@ static av_cold int hevc_decode_init(AVCodecContext *avctx)
         if (!sc->DPB[i].frame)
             return AVERROR(ENOMEM);
     }
+    memset(sc->vps_list, 0, sizeof(sc->vps_list));
     memset(sc->sps_list, 0, sizeof(sc->sps_list));
     memset(sc->pps_list, 0, sizeof(sc->pps_list));
     sc->ctb_entry_count  = NULL;
@@ -2369,6 +2368,7 @@ static av_cold int hevc_decode_init(AVCodecContext *avctx)
             return AVERROR(ENOMEM);
     }
     sc->skipped_buf_size = 0;
+    s->threads_number = 1;
     return 0;
 }
 
