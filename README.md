@@ -21,6 +21,7 @@ openHEVC is an open source compliant HEVC video decoder created as a fork of Lib
 
 - How to compile openHEVC on linux from source code
 ----------
+<<<<<<< HEAD
 * git clone git://github.com/OpenHEVC/openHEVC.git
 * git checkout hm10.0
 * go into OpenHEVC source folder
@@ -29,9 +30,13 @@ openHEVC is an open source compliant HEVC video decoder created as a fork of Lib
 * cmake -DCMAKE_BUILD_TYPE=RELEASE ..
 * make
 * sudo make install
+=======
+Initial C wrapper from HM10.0 C++ reference SW (HEVC reference sw)
+>>>>>>> 03f9548c64183b20e68a2db58e481da7e8957352
 
 - How to test openHEVC on linux from source code
 ----------
+<<<<<<< HEAD
 * Prerequisites: SDL or SDL2
 * go into source folder of openHEVC
 * with SDL cd build; ./hevc -i name_of_annexB_bitstream.(bit,bin,265)
@@ -79,4 +84,20 @@ openHEVC is an open source compliant HEVC video decoder created as a fork of Lib
 - gpac contributors
 -----------
 * see http://gpac.wp.mines-telecom.fr/about/
+=======
+HM10.0 reference SW
+
+- How to compile OpenHEVC on linux from source code
+----------
+* git clone git://github.com/OpenHEVC/openHEVC.git
+* git checkout hm10.0
+* go into OpenHEVC folder source
+* mkdir build
+* cd build
+* cmake -DCMAKE_BUILD_TYPE=RELEASE ..
+* make
+* make install
+
+
+>>>>>>> 03f9548c64183b20e68a2db58e481da7e8957352
 
