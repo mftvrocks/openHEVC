@@ -25,10 +25,7 @@
 #include "hevcpred.h"
 //#define USE_SSE
 #ifdef USE_SSE
-#include <emmintrin.h>
 #include <x86intrin.h>
-#include <tmmintrin.h>
-#include <smmintrin.h>
 #endif
 
 #ifdef USE_SSE
