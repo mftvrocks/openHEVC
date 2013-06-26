@@ -3058,7 +3058,7 @@ static void FUNC(sao_band_filter_wpp_0)( uint8_t *_dst, uint8_t *_src, ptrdiff_t
             	x2= _mm_or_si128(x2,x3);
 
 
-            	x0= _mm_or_si128(x0,x2);	//contient resultat pour 4 pixels
+            	x0= _mm_or_si128(x0,x2);
 
             	src0= _mm_add_epi16(src0,x0);
 
@@ -3075,7 +3075,7 @@ static void FUNC(sao_band_filter_wpp_0)( uint8_t *_dst, uint8_t *_src, ptrdiff_t
             	x0= _mm_or_si128(x0,x1);
             	x2= _mm_or_si128(x2,x3);
 
-            	x0= _mm_or_si128(x0,x2);	//contient resultat pour 4 pixels
+            	x0= _mm_or_si128(x0,x2);
 
             	src1= _mm_add_epi16(src1,x0);
 
@@ -3152,7 +3152,7 @@ static void FUNC(sao_band_filter_wpp_1)( uint8_t *_dst, uint8_t *_src, ptrdiff_t
                	x2= _mm_or_si128(x2,x3);
 
 
-               	x0= _mm_or_si128(x0,x2);	//contient resultat pour 4 pixels
+               	x0= _mm_or_si128(x0,x2);
 
                	src0= _mm_add_epi16(src0,x0);
 
@@ -3169,7 +3169,7 @@ static void FUNC(sao_band_filter_wpp_1)( uint8_t *_dst, uint8_t *_src, ptrdiff_t
                	x0= _mm_or_si128(x0,x1);
                	x2= _mm_or_si128(x2,x3);
 
-               	x0= _mm_or_si128(x0,x2);	//contient resultat pour 4 pixels
+               	x0= _mm_or_si128(x0,x2);
 
                	src1= _mm_add_epi16(src1,x0);
 
@@ -3195,7 +3195,7 @@ static void FUNC(sao_band_filter_wpp_2)( uint8_t *_dst, uint8_t *_src, ptrdiff_t
     int sao_left_class = sao->band_position[c_idx];
 
     int init_y = 0, init_x =0;
-    __m128i	r0 ,r1 ,r2 ,r3,x0 ,x1 ,x2 ,x3, sao1 ,sao2 ,sao3 ,sao4 , src0,src1,src2,src3;
+    __m128i	r0 ,r1 ,r2 ,r3,x0 ,x1 ,x2 ,x3, sao1 ,sao2 ,sao3 ,sao4 , src0,src1,src2,src3, mask;
 
             init_x = -(8>>chroma)-2;
             width = (8>>chroma)+2;	//width < 16
@@ -3243,7 +3243,7 @@ static void FUNC(sao_band_filter_wpp_2)( uint8_t *_dst, uint8_t *_src, ptrdiff_t
         	x2= _mm_or_si128(x2,x3);
 
 
-        	x0= _mm_or_si128(x0,x2);	//contient resultat pour 4 pixels
+        	x0= _mm_or_si128(x0,x2);
 
         	src0= _mm_add_epi16(src0,x0);
 
@@ -3260,18 +3260,19 @@ static void FUNC(sao_band_filter_wpp_2)( uint8_t *_dst, uint8_t *_src, ptrdiff_t
         	x0= _mm_or_si128(x0,x1);
         	x2= _mm_or_si128(x2,x3);
 
-        	x0= _mm_or_si128(x0,x2);	//contient resultat pour 4 pixels
+        	x0= _mm_or_si128(x0,x2);
 
         	src1= _mm_add_epi16(src1,x0);
 
         	src0= _mm_packus_epi16(src0,src1);
 
-        	dst[0] = _mm_extract_epi8(src0,0);
+        	_mm_maskmoveu_si128(src0,_mm_set_epi8(0,0,0,0,0,0,0,0,0,0,-1,-1,-1,-1,-1,-1),(char*)dst);
+        	/*dst[0] = _mm_extract_epi8(src0,0);
         	dst[1]= _mm_extract_epi8(src0,1);
         	dst[2] = _mm_extract_epi8(src0,2);
         	dst[3]= _mm_extract_epi8(src0,3);
         	dst[4] = _mm_extract_epi8(src0,4);
-        	dst[5]= _mm_extract_epi8(src0,5);
+        	dst[5]= _mm_extract_epi8(src0,5);*/
 
         	src0= _mm_srli_si128(src0,6);
 
@@ -3368,13 +3369,14 @@ static void FUNC(sao_band_filter_wpp_3)( uint8_t *_dst, uint8_t *_src, ptrdiff_t
         	src1= _mm_add_epi16(src1,x0);
 
         	src0= _mm_packus_epi16(src0,src1);
+        	_mm_maskmoveu_si128(src0,_mm_set_epi8(0,0,0,0,0,0,0,0,0,0,-1,-1,-1,-1,-1,-1),(char*)dst);
 
-        	dst[0] = _mm_extract_epi8(src0,0);
+/*        	dst[0] = _mm_extract_epi8(src0,0);
         	dst[1]= _mm_extract_epi8(src0,1);
         	dst[2] = _mm_extract_epi8(src0,2);
         	dst[3]= _mm_extract_epi8(src0,3);
         	dst[4] = _mm_extract_epi8(src0,4);
-        	dst[5]= _mm_extract_epi8(src0,5);
+        	dst[5]= _mm_extract_epi8(src0,5);*/
 
         	src0= _mm_srli_si128(src0,6);
 
@@ -3873,11 +3875,9 @@ static void FUNC(put_hevc_qpel_pixels)(int16_t *dst, ptrdiff_t dststride,
             x1= _mm_loadu_si128((__m128i*)&src[0]);
             x2 = _mm_unpacklo_epi8(x1,_mm_set1_epi8(0));
             x2= _mm_slli_epi16(x2,14 - BIT_DEPTH);
-            _mm_storeu_si128((__m128i*)&dst[0], x2);
-         /*   dst[0]= _mm_extract_epi16(x2,0);
-            dst[1]= _mm_extract_epi16(x2,1);
-            dst[2]= _mm_extract_epi16(x2,2);
-            dst[3]= _mm_extract_epi16(x2,3);*/
+
+            _mm_storel_epi64((__m128i*)&dst[0], x2);
+
 
             src += srcstride;
             dst += dststride;
@@ -3982,17 +3982,11 @@ x2= _mm_hadd_epi16(x2,_mm_set1_epi16(0));                                   \
 x2= _mm_srli_epi16(x2, BIT_DEPTH - 8);                                         \
     y2= _mm_srli_epi16(y2, BIT_DEPTH - 8);                                      \
 /* give results back            */                                \
-    _mm_store_si128((__m128i*)&dst[0],x2); \
-/*dst[0]= _mm_extract_epi16(x2,0);                                            \
-dst[1]= _mm_extract_epi16(x2,1);                                        \
-dst[2]= _mm_extract_epi16(x2,2);                                        \
-dst[3]= _mm_extract_epi16(x2,3);           */                             \
+    _mm_storel_epi64((__m128i*)&dst[0],x2); \
+                         \
     dst+=dststride; \
-    _mm_store_si128((__m128i*)&dst[0],y2); \
-/*    dst[0]= _mm_extract_epi16(y2,0);                                            \
-    dst[1]= _mm_extract_epi16(y2,1);                                        \
-    dst[2]= _mm_extract_epi16(y2,2);                                        \
-    dst[3]= _mm_extract_epi16(y2,3);    */                                    \
+    _mm_storel_epi64((__m128i*)&dst[0],y2); \
+                                \
 src += srcstride;                                                       \
 dst += dststride;                                                       \
 }                                                                           \
@@ -4105,9 +4099,9 @@ r0= _mm_adds_epi16(r0, _mm_mullo_epi16(x8,_mm_set1_epi16(_mm_extract_epi16(r1,7)
 r0= _mm_srli_epi16(r0, BIT_DEPTH - 8);                                      \
 r2= _mm_srli_epi16(r2, BIT_DEPTH - 8);                                      \
 /* give results back            */                                          \
-    _mm_store_si128((__m128i*)&dst[0],r0); \
+    _mm_storel_epi64((__m128i*)&dst[0],r0); \
     dst += dststride;                                                         \
-        _mm_store_si128((__m128i*)&dst[0],r2);    \
+        _mm_storel_epi64((__m128i*)&dst[0],r2);    \
 src += srcstride;                                                       \
 dst += dststride;                                                       \
 }                                                                           \
@@ -4218,17 +4212,11 @@ for (y = 0; y < height + qpel_extra[V]; y+=2) {                              \
     x2= _mm_srli_epi16(x2, BIT_DEPTH - 8);                                         \
         t2= _mm_srli_epi16(t2, BIT_DEPTH - 8);                                      \
 /* give results back            */                         \
-    _mm_store_si128((__m128i*)&tmp[0], x2);\
-/*tmp[0]= _mm_extract_epi16(x2,0);                           \
-tmp[1]= _mm_extract_epi16(x2,1);                           \
-tmp[2]= _mm_extract_epi16(x2,2);                           \
-tmp[3]= _mm_extract_epi16(x2,3);          */                 \
+    _mm_storel_epi64((__m128i*)&tmp[0], x2);\
+                \
     tmp += MAX_PB_SIZE;                                    \
-    _mm_store_si128((__m128i*)&tmp[0], t2);\
-/*tmp[0]= _mm_extract_epi16(t2,0);                           \
-tmp[1]= _mm_extract_epi16(t2,1);                           \
-tmp[2]= _mm_extract_epi16(t2,2);                           \
-tmp[3]= _mm_extract_epi16(t2,3);       */                    \
+    _mm_storel_epi64((__m128i*)&tmp[0], t2);\
+                \
 src += srcstride;                                                           \
 tmp += MAX_PB_SIZE;                                                         \
 }                                                                           \
@@ -4388,11 +4376,8 @@ static void FUNC(put_hevc_epel_pixels)(int16_t *dst, ptrdiff_t dststride,
             x1= _mm_loadu_si128((__m128i*)&src[0]);
             x2 = _mm_unpacklo_epi8(x1,_mm_set1_epi8(0));
             x2= _mm_slli_epi16(x2,14 - BIT_DEPTH);
-           /* dst[0]= _mm_extract_epi16(x2,0);
-            dst[1]= _mm_extract_epi16(x2,1);
-            dst[2]= _mm_extract_epi16(x2,2);
-            dst[3]= _mm_extract_epi16(x2,3);*/
-            _mm_store_si128((__m128i*)&dst[0],x2);
+
+            _mm_storel_epi64((__m128i*)&dst[0],x2);
             src += srcstride;
             dst += dststride;
         }
@@ -4447,11 +4432,8 @@ static void FUNC(put_hevc_epel_h)(int16_t *dst, ptrdiff_t dststride,
             x2= _mm_hadd_epi16(x2,_mm_set1_epi16(0));
             x2= _mm_srli_epi16(x2, BIT_DEPTH - 8);
             /* give results back            */
-            _mm_store_si128((__m128i*)&dst[0],x2);
-       /*     dst[0]= _mm_extract_epi16(x2,0);
-            dst[1]= _mm_extract_epi16(x2,1);
-            dst[2]= _mm_extract_epi16(x2,2);
-            dst[3]= _mm_extract_epi16(x2,3);*/
+            _mm_storel_epi64((__m128i*)&dst[0],x2);
+
             src += srcstride;
             dst += dststride;
         }
@@ -4519,11 +4501,7 @@ static void FUNC(put_hevc_epel_v)(int16_t *dst, ptrdiff_t dststride,
             r0= _mm_adds_epi16(r0, _mm_mullo_epi16(t3,f3)) ;
             r0= _mm_srli_epi16(r0,BIT_DEPTH - 8);
             /* give results back            */
-            _mm_store_si128((__m128i*)&dst[0], r0);\
-           /* dst[0]= _mm_extract_epi16(r0,0);
-            dst[1]= _mm_extract_epi16(r0,1);
-            dst[2]= _mm_extract_epi16(r0,2);
-            dst[3]= _mm_extract_epi16(r0,3);*/
+            _mm_storel_epi64((__m128i*)&dst[0], r0);\
             
             src += srcstride;
             dst += dststride;
@@ -4613,17 +4591,11 @@ static void FUNC(put_hevc_epel_hv)(int16_t *dst, ptrdiff_t dststride,
             x2= _mm_hadd_epi16(x2,_mm_set1_epi16(0));
             x2= _mm_srli_epi16(x2, BIT_DEPTH - 8);
             /* give results back            */
-            _mm_store_si128((__m128i*)&tmp[0], x1);
-/*            tmp[0]= _mm_extract_epi16(x1,0);
-            tmp[1]= _mm_extract_epi16(x1,1);
-            tmp[2]= _mm_extract_epi16(x1,2);
-            tmp[3]= _mm_extract_epi16(x1,3);*/
+            _mm_storel_epi64((__m128i*)&tmp[0], x1);
+
             tmp += MAX_PB_SIZE;
-            _mm_store_si128((__m128i*)&tmp[0], x2);
-            /*tmp[0]= _mm_extract_epi16(x2,0);
-            tmp[1]= _mm_extract_epi16(x2,1);
-            tmp[2]= _mm_extract_epi16(x2,2);
-            tmp[3]= _mm_extract_epi16(x2,3);*/
+            _mm_storel_epi64((__m128i*)&tmp[0], x2);
+
             src += srcstride;
             tmp += MAX_PB_SIZE;
         }
@@ -4787,20 +4759,16 @@ static void FUNC(weighted_pred)(uint8_t denom, int16_t wlxFlag, int16_t olxFlag,
                                      int16_t *src, ptrdiff_t srcstride,
                                      int width, int height)
 {
-//    int shift;
+
     int log2Wd;
-//    int16_t wx;
-//    int ox;
     int x , y;
- //   int offset;
+
     pixel *dst = (pixel*)_dst;
     ptrdiff_t dststride = _dststride/sizeof(pixel);
     __m128i x0,x1,x2,x3,c0,add,add2;
-    //shift = 14 - BIT_DEPTH;
+
     log2Wd = denom + 14 - BIT_DEPTH;
-    //offset = 1 << (log2Wd - 1);
-   // wx = wlxFlag;
-    //ox = olxFlag * ( 1 << ( BIT_DEPTH - 8 ) );
+
     add= _mm_set1_epi32(olxFlag * ( 1 << ( BIT_DEPTH - 8 ) ));
     add2= _mm_set1_epi32(1 << (log2Wd - 1));
     c0= _mm_set1_epi16(wlxFlag);
@@ -4880,11 +4848,9 @@ static void FUNC(weighted_pred_avg)(uint8_t denom, int16_t wl0Flag, int16_t wl1F
     __m128i x0,x1,x2,x3,r0,r1,r2,r3,c0,c1,c2;
     shift = 14 - BIT_DEPTH;
     log2Wd = denom + shift;
-    //w0 = wl0Flag;
-    //w1 = wl1Flag;
+
     o0 = (ol0Flag) * ( 1 << ( BIT_DEPTH - 8 ) );
     o1 = (ol1Flag) * ( 1 << ( BIT_DEPTH - 8 ) );
-    //add = (o0 + o1 + 1) << log2Wd;
     shift2= (log2Wd + 1);
     c0= _mm_set1_epi16(wl0Flag);
     c1= _mm_set1_epi16(wl1Flag);
@@ -4926,7 +4892,6 @@ static void FUNC(weighted_pred_avg)(uint8_t denom, int16_t wl0Flag, int16_t wl1F
 
             _mm_storeu_si128((__m128i*)dst+x,r0);
 
-            //dst[x] = av_clip_pixel((src1[x] * w0 + src2[x] * w1 + add) >> shift2);
         }
         dst  += dststride;
         src1 += srcstride;
