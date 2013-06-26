@@ -3204,7 +3204,7 @@ static void FUNC(sao_band_filter_wpp_2)( uint8_t *_dst, uint8_t *_src, ptrdiff_t
     int sao_left_class = sao->band_position[c_idx];
 
     int init_y = 0, init_x =0;
-    __m128i	r0 ,r1 ,r2 ,r3,x0 ,x1 ,x2 ,x3, sao1 ,sao2 ,sao3 ,sao4 , src0,src1,src2,src3, mask;
+    __m128i	r0 ,r1 ,r2 ,r3,x0 ,x1 ,x2 ,x3, sao1 ,sao2 ,sao3 ,sao4 , src0,src1,src2,src3;
 
             init_x = -(8>>chroma)-2;
             width = (8>>chroma)+2;	//width < 16
@@ -3276,12 +3276,6 @@ static void FUNC(sao_band_filter_wpp_2)( uint8_t *_dst, uint8_t *_src, ptrdiff_t
         	src0= _mm_packus_epi16(src0,src1);
 
         	_mm_maskmoveu_si128(src0,_mm_set_epi8(0,0,0,0,0,0,0,0,0,0,-1,-1,-1,-1,-1,-1),(char*)dst);
-        	/*dst[0] = _mm_extract_epi8(src0,0);
-        	dst[1]= _mm_extract_epi8(src0,1);
-        	dst[2] = _mm_extract_epi8(src0,2);
-        	dst[3]= _mm_extract_epi8(src0,3);
-        	dst[4] = _mm_extract_epi8(src0,4);
-        	dst[5]= _mm_extract_epi8(src0,5);*/
 
         	src0= _mm_srli_si128(src0,6);
 
@@ -3379,13 +3373,6 @@ static void FUNC(sao_band_filter_wpp_3)( uint8_t *_dst, uint8_t *_src, ptrdiff_t
 
         	src0= _mm_packus_epi16(src0,src1);
         	_mm_maskmoveu_si128(src0,_mm_set_epi8(0,0,0,0,0,0,0,0,0,0,-1,-1,-1,-1,-1,-1),(char*)dst);
-
-/*        	dst[0] = _mm_extract_epi8(src0,0);
-        	dst[1]= _mm_extract_epi8(src0,1);
-        	dst[2] = _mm_extract_epi8(src0,2);
-        	dst[3]= _mm_extract_epi8(src0,3);
-        	dst[4] = _mm_extract_epi8(src0,4);
-        	dst[5]= _mm_extract_epi8(src0,5);*/
 
         	src0= _mm_srli_si128(src0,6);
 
