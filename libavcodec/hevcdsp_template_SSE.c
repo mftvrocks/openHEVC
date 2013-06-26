@@ -20,6 +20,18 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+
+
+/**
+ * This is the SSE optimised version of hevcdsp_template.c
+ *
+ * the minimum version for most functions is SSE2.
+ *
+ * qpel_h, qpel_hv, epel_h, epel_hv need SSSE3 (maddubs)
+ *
+ * dequant functions need SSE4.1 (mullo_epi32)
+ */
+
 #include "libavutil/avassert.h"
 #include "libavutil/pixdesc.h"
 #include "get_bits.h"
@@ -27,10 +39,7 @@
 #include "hevcdata.h"
 #include "hevcdsp.h"
 #include "hevc.h"
-#include <emmintrin.h>
 #include <x86intrin.h>
-#include <tmmintrin.h>
-#include <smmintrin.h>
 
 #define shift_1st 7
 #define add_1st (1 << (shift_1st - 1))
