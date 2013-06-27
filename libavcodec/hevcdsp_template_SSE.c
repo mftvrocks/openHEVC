@@ -3982,7 +3982,7 @@ static void FUNC(sao_edge_filter)(uint8_t *_dst, uint8_t *_src, ptrdiff_t _strid
 
 static void FUNC(put_hevc_qpel_pixels)(int16_t *dst, ptrdiff_t dststride,
                                        uint8_t *_src, ptrdiff_t _srcstride,
-                                       int width, int height)
+                                       int width, int height, int16_t* mcbuffer)
 {
     int x, y;
     __m128i x1, x2, x3;
@@ -4065,7 +4065,7 @@ _mm_setzero_si128()
 #define PUT_HEVC_QPEL_H(H)                                                      \
 static void FUNC(put_hevc_qpel_h ## H)(int16_t *dst, ptrdiff_t dststride,       \
 uint8_t *_src, ptrdiff_t _srcstride,  \
-int width, int height)                \
+int width, int height, int16_t* mcbuffer)                \
 {                                                                           \
 int x, y, i;                                                            \
 uint8_t *src = _src;                                                    \
@@ -4142,7 +4142,7 @@ dst += dststride;                                                   \
 #define PUT_HEVC_QPEL_V(V)                                                  \
 static void FUNC(put_hevc_qpel_v ## V)(int16_t *dst, ptrdiff_t dststride,   \
 uint8_t *_src, ptrdiff_t _srcstride,                                        \
-int width, int height)                                                      \
+int width, int height, int16_t* mcbuffer)                                                      \
 {                                                                           \
 int x, y;                                                                   \
 pixel *src = (pixel*)_src;                                                  \
@@ -4291,14 +4291,14 @@ dst += dststride;                                                       \
 #define PUT_HEVC_QPEL_HV(H, V)                                                            \
 static void FUNC(put_hevc_qpel_h ## H ## v ## V )(int16_t *dst, ptrdiff_t dststride,      \
 uint8_t *_src, ptrdiff_t _srcstride,    \
-int width, int height)                  \
+int width, int height, int16_t* mcbuffer)                  \
 {                                                                       \
 int x, y, temp1;                                                               \
 pixel *src = (pixel*)_src;                                              \
 ptrdiff_t srcstride = _srcstride/sizeof(pixel);                         \
-DECLARE_ALIGNED( 16, int16_t, tmp_array[(MAX_PB_SIZE+7)*MAX_PB_SIZE] );\
+/*DECLARE_ALIGNED( 16, int16_t, tmp_array[(MAX_PB_SIZE+7)*MAX_PB_SIZE] );*/\
 /* int16_t tmp_array[(MAX_PB_SIZE+7)*MAX_PB_SIZE];     */                    \
- int16_t *tmp = tmp_array;                                               \
+ int16_t *tmp = mcbuffer;                                               \
 __m128i x1,x2,x3,x4,x5,x6,x7,x8, rBuffer, rTemp, r0, r1, r2;            \
 __m128i t1,t2,t3,t4,t5,t6,t7,t8;                                        \
   \
@@ -4367,7 +4367,7 @@ tmp += MAX_PB_SIZE;                                                     \
 }                                                                           \
 \
 \
-tmp = tmp_array + qpel_extra_before[V] * MAX_PB_SIZE;                   \
+tmp = mcbuffer + qpel_extra_before[V] * MAX_PB_SIZE;                   \
     srcstride= MAX_PB_SIZE;                                             \
                                                                         \
 /* vertical treatment on temp table : tmp contains 16 bit values, so need to use 32 bit  integers
@@ -4483,7 +4483,7 @@ PUT_HEVC_QPEL_HV(3, 3)
 
 static void FUNC(put_hevc_epel_pixels)(int16_t *dst, ptrdiff_t dststride,
                                        uint8_t *_src, ptrdiff_t _srcstride,
-                                       int width, int height, int mx, int my)
+                                       int width, int height, int mx, int my, int16_t* mcbuffer)
 {
     int x, y;
     __m128i x1, x2;
@@ -4524,7 +4524,7 @@ static void FUNC(put_hevc_epel_pixels)(int16_t *dst, ptrdiff_t dststride,
 
 static void FUNC(put_hevc_epel_h)(int16_t *dst, ptrdiff_t dststride,
                                   uint8_t *_src, ptrdiff_t _srcstride,
-                                  int width, int height, int mx, int my)
+                                  int width, int height, int mx, int my, int16_t* mcbuffer)
 {
     int x, y;
     pixel *src = (pixel*)_src;
@@ -4579,7 +4579,7 @@ static void FUNC(put_hevc_epel_h)(int16_t *dst, ptrdiff_t dststride,
 
 static void FUNC(put_hevc_epel_v)(int16_t *dst, ptrdiff_t dststride,
                                   uint8_t *_src, ptrdiff_t _srcstride,
-                                  int width, int height, int mx, int my)
+                                  int width, int height, int mx, int my, int16_t* mcbuffer)
 {
     int x, y;
     __m128i x0,x1,x2,x3,t0,t1,t2,t3,r0,f0,f1,f2,f3,r1;
@@ -4669,7 +4669,7 @@ static void FUNC(put_hevc_epel_v)(int16_t *dst, ptrdiff_t dststride,
 
 static void FUNC(put_hevc_epel_hv)(int16_t *dst, ptrdiff_t dststride,
                                    uint8_t *_src, ptrdiff_t _srcstride,
-                                   int width, int height, int mx, int my)
+                                   int width, int height, int mx, int my, int16_t* mcbuffer)
 {
     int x, y;
     pixel *src = (pixel*)_src;
@@ -4683,11 +4683,11 @@ static void FUNC(put_hevc_epel_hv)(int16_t *dst, ptrdiff_t dststride,
     int8_t filter_3 = filter_h[3];
     r0= _mm_set_epi8(filter_3,filter_2,filter_1, filter_0,filter_3,filter_2,filter_1, filter_0,filter_3,filter_2,filter_1, filter_0,filter_3,filter_2,filter_1, filter_0);
     bshuffle1=_mm_set_epi8(6,5,4,3,5,4,3,2,4,3,2,1,3,2,1,0);
-    DECLARE_ALIGNED( 16, int16_t, tmp_array[(MAX_PB_SIZE+3)*MAX_PB_SIZE] );
+    //DECLARE_ALIGNED( 16, int16_t, tmp_array[(MAX_PB_SIZE+3)*MAX_PB_SIZE] );
     //#ifndef OPTIMIZATION_ENABLE
     // int16_t tmp_array[(MAX_PB_SIZE+3)*MAX_PB_SIZE];
     //#endif
-     int16_t *tmp = tmp_array;
+     int16_t *tmp = mcbuffer;
     
     src -= epel_extra_before * srcstride;
     /* horizontal treatment */
@@ -4738,7 +4738,7 @@ static void FUNC(put_hevc_epel_hv)(int16_t *dst, ptrdiff_t dststride,
         }
     }
     
-    tmp = tmp_array + epel_extra_before * MAX_PB_SIZE;
+    tmp = mcbuffer + epel_extra_before * MAX_PB_SIZE;
     
     /* vertical treatment */
     //f0= _mm_loadu_si128((__m128i *)&filter_v);

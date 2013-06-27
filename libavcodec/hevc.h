@@ -853,6 +853,8 @@ typedef struct HEVCLocalContext {
     CodingUnit cu;
     PredictionUnit pu;
 
+    int16_t* bufferMC;
+
 } HEVCLocalContext;
 
 typedef struct HEVCSharedContext {
