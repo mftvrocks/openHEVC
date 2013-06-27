@@ -908,7 +908,7 @@ static void FUNC(transform_8x8_add)(uint8_t *_dst, int16_t *coeffs, ptrdiff_t _s
     O3l = _mm_add_epi32(E1l, E2l);
     
     /*    -------     */
-    
+
     m128iS0   = _mm_load_si128( (__m128i*)( src + 0   ) );
     m128iS4   = _mm_load_si128( (__m128i*)( src + 32   ) );
     m128Tmp0 = _mm_unpacklo_epi16(  m128iS0, m128iS4 );
@@ -921,7 +921,7 @@ static void FUNC(transform_8x8_add)(uint8_t *_dst, int16_t *coeffs, ptrdiff_t _s
     
     
     /*    -------     */
-    
+
     m128iS2   = _mm_load_si128( (__m128i*)( src  +16) );
     m128iS6   = _mm_load_si128( (__m128i*)( src + 48   ) );
     m128Tmp0 = _mm_unpacklo_epi16(  m128iS2, m128iS6 );
@@ -956,7 +956,7 @@ static void FUNC(transform_8x8_add)(uint8_t *_dst, int16_t *coeffs, ptrdiff_t _s
     m128iS6 = _mm_packs_epi32(_mm_srai_epi32(_mm_sub_epi32(E1l, O1l),shift_1st), _mm_srai_epi32(_mm_sub_epi32(E1h, O1h), shift_1st));
     m128iS7 = _mm_packs_epi32(_mm_srai_epi32(_mm_sub_epi32(E0l, O0l),shift_1st), _mm_srai_epi32(_mm_sub_epi32(E0h, O0h), shift_1st));
     /*  Invers matrix   */
-    
+
     E0l = _mm_unpacklo_epi16(m128iS0, m128iS4);
     E1l = _mm_unpacklo_epi16(m128iS1, m128iS5);
     E2l = _mm_unpacklo_epi16(m128iS2, m128iS6);
@@ -1949,7 +1949,7 @@ static void FUNC(transform_32x32_add)(uint8_t *_dst, int16_t *coeffs, ptrdiff_t 
             O6h = _mm_add_epi32(O6h, E7h);
             
             /* Compute O7*/
-            
+
             E0l = _mm_madd_epi16( m128Tmp0, _mm_load_si128( (__m128i*)( transform32x32[0][7] ) ) );
             E0h = _mm_madd_epi16( m128Tmp1, _mm_load_si128( (__m128i*)( transform32x32[0][7] ) ) );
             E1l = _mm_madd_epi16( m128Tmp2, _mm_load_si128( (__m128i*)( transform32x32[1][7] ) ) );
@@ -1987,7 +1987,7 @@ static void FUNC(transform_32x32_add)(uint8_t *_dst, int16_t *coeffs, ptrdiff_t 
             O7h = _mm_add_epi32(O7h, E7h);
             
             /* Compute O8*/
-            
+
             E0l = _mm_madd_epi16( m128Tmp0, _mm_load_si128( (__m128i*)( transform32x32[0][8] ) ) );
             E0h = _mm_madd_epi16( m128Tmp1, _mm_load_si128( (__m128i*)( transform32x32[0][8] ) ) );
             E1l = _mm_madd_epi16( m128Tmp2, _mm_load_si128( (__m128i*)( transform32x32[1][8] ) ) );
@@ -2026,7 +2026,7 @@ static void FUNC(transform_32x32_add)(uint8_t *_dst, int16_t *coeffs, ptrdiff_t 
             
             
             /* Compute O9*/
-            
+
             E0l = _mm_madd_epi16( m128Tmp0, _mm_load_si128( (__m128i*)( transform32x32[0][9] ) ) );
             E0h = _mm_madd_epi16( m128Tmp1, _mm_load_si128( (__m128i*)( transform32x32[0][9] ) ) );
             E1l = _mm_madd_epi16( m128Tmp2, _mm_load_si128( (__m128i*)( transform32x32[1][9] ) ) );
@@ -2065,7 +2065,7 @@ static void FUNC(transform_32x32_add)(uint8_t *_dst, int16_t *coeffs, ptrdiff_t 
             
             
             /* Compute 10*/
-            
+
             E0l = _mm_madd_epi16( m128Tmp0, _mm_load_si128( (__m128i*)( transform32x32[0][10] ) ) );
             E0h = _mm_madd_epi16( m128Tmp1, _mm_load_si128( (__m128i*)( transform32x32[0][10] ) ) );
             E1l = _mm_madd_epi16( m128Tmp2, _mm_load_si128( (__m128i*)( transform32x32[1][10] ) ) );
@@ -2146,7 +2146,7 @@ static void FUNC(transform_32x32_add)(uint8_t *_dst, int16_t *coeffs, ptrdiff_t 
             
             
             /* Compute 12*/
-            
+
             E0l = _mm_madd_epi16( m128Tmp0, _mm_load_si128( (__m128i*)( transform32x32[0][12] ) ) );
             E0h = _mm_madd_epi16( m128Tmp1, _mm_load_si128( (__m128i*)( transform32x32[0][12] ) ) );
             E1l = _mm_madd_epi16( m128Tmp2, _mm_load_si128( (__m128i*)( transform32x32[1][12] ) ) );
@@ -2186,7 +2186,7 @@ static void FUNC(transform_32x32_add)(uint8_t *_dst, int16_t *coeffs, ptrdiff_t 
             
             
             /* Compute 13*/
-            
+
             E0l = _mm_madd_epi16( m128Tmp0, _mm_load_si128( (__m128i*)( transform32x32[0][13] ) ) );
             E0h = _mm_madd_epi16( m128Tmp1, _mm_load_si128( (__m128i*)( transform32x32[0][13] ) ) );
             E1l = _mm_madd_epi16( m128Tmp2, _mm_load_si128( (__m128i*)( transform32x32[1][13] ) ) );
@@ -2225,7 +2225,7 @@ static void FUNC(transform_32x32_add)(uint8_t *_dst, int16_t *coeffs, ptrdiff_t 
             
             
             /* Compute O14  */
-            
+
             E0l = _mm_madd_epi16( m128Tmp0, _mm_load_si128( (__m128i*)( transform32x32[0][14] ) ) );
             E0h = _mm_madd_epi16( m128Tmp1, _mm_load_si128( (__m128i*)( transform32x32[0][14] ) ) );
             E1l = _mm_madd_epi16( m128Tmp2, _mm_load_si128( (__m128i*)( transform32x32[1][14] ) ) );
@@ -2265,7 +2265,7 @@ static void FUNC(transform_32x32_add)(uint8_t *_dst, int16_t *coeffs, ptrdiff_t 
             
             
             /* Compute O15*/
-            
+
             E0l = _mm_madd_epi16( m128Tmp0, _mm_load_si128( (__m128i*)( transform32x32[0][15] ) ) );
             E0h = _mm_madd_epi16( m128Tmp1, _mm_load_si128( (__m128i*)( transform32x32[0][15] ) ) );
             E1l = _mm_madd_epi16( m128Tmp2, _mm_load_si128( (__m128i*)( transform32x32[1][15] ) ) );
@@ -2302,7 +2302,7 @@ static void FUNC(transform_32x32_add)(uint8_t *_dst, int16_t *coeffs, ptrdiff_t 
             O15h = _mm_add_epi32(O15h, E6h);
             O15h = _mm_add_epi32(O15h, E7h);
             /*  Compute E0  */
-            
+
             m128Tmp0 = _mm_unpacklo_epi16(  m128iS2, m128iS6 );
             E0l = _mm_madd_epi16( m128Tmp0, _mm_load_si128( (__m128i*)( transform16x16_1[0][0] ) ) );
             m128Tmp1 = _mm_unpackhi_epi16(  m128iS2, m128iS6 );
@@ -2401,7 +2401,7 @@ static void FUNC(transform_32x32_add)(uint8_t *_dst, int16_t *coeffs, ptrdiff_t 
             
             /*  Compute EE0 and EEE */
             
-            
+
             m128Tmp0 = _mm_unpacklo_epi16(  m128iS4, m128iS12 );
             E00l =  _mm_madd_epi16( m128Tmp0, _mm_load_si128( (__m128i*)( transform16x16_2[0][0] ) ) );
             m128Tmp1 = _mm_unpackhi_epi16(  m128iS4, m128iS12 );
@@ -2431,7 +2431,7 @@ static void FUNC(transform_32x32_add)(uint8_t *_dst, int16_t *coeffs, ptrdiff_t 
 
             /*  Compute EE0 and EEE */
             
-            
+
             m128Tmp0 = _mm_unpacklo_epi16(  m128iS8, m128iS24 );
             EE0l =  _mm_madd_epi16( m128Tmp0, _mm_load_si128( (__m128i*)( transform16x16_3[0][0] ) ) );
             m128Tmp1 = _mm_unpackhi_epi16(  m128iS8, m128iS24 );
@@ -2450,7 +2450,7 @@ static void FUNC(transform_32x32_add)(uint8_t *_dst, int16_t *coeffs, ptrdiff_t 
             EEE1h = _mm_madd_epi16( m128Tmp3, _mm_load_si128( (__m128i*)( transform16x16_3[1][1] ) ) );
             
             /*  Compute EE    */
-            
+
             EE2l = _mm_sub_epi32(EEE1l,EE1l);
             EE3l = _mm_sub_epi32(EEE0l,EE0l);
             EE2h = _mm_sub_epi32(EEE1h,EE1h);
@@ -2461,7 +2461,7 @@ static void FUNC(transform_32x32_add)(uint8_t *_dst, int16_t *coeffs, ptrdiff_t 
             EE0h = _mm_add_epi32(EEE0h,EE0h);
             EE1h = _mm_add_epi32(EEE1h,EE1h);
             /**/
-            
+
             EE7l = _mm_sub_epi32(EE0l, E00l);
             EE6l = _mm_sub_epi32(EE1l, E01l);
             EE5l = _mm_sub_epi32(EE2l, E02l);
@@ -2483,7 +2483,7 @@ static void FUNC(transform_32x32_add)(uint8_t *_dst, int16_t *coeffs, ptrdiff_t 
             EE2h = _mm_add_epi32(EE2h, E02h);
             EE3h = _mm_add_epi32(EE3h, E03h);
             /*      Compute E       */
-            
+
             E15l = _mm_sub_epi32(EE0l,E0l);
             E15l = _mm_add_epi32(E15l, m128iAdd);
             E14l = _mm_sub_epi32(EE1l,E1l);
@@ -3406,7 +3406,7 @@ static void FUNC(sao_edge_filter_wpp_0)(uint8_t *_dst, uint8_t *_src, ptrdiff_t 
     const uint8_t edge_idx[] = { 1, 2, 0, 3, 4 };
 
     int init_x = 0, init_y = 0, width = _width, height = _height;
-    __m128i x0,x1,x2,x3;
+    __m128i x0,x1,x2,x3,offset0,offset1,offset2,offset3, offset4, cmp0, cmp1, r0,r1,r2,r3,r4;
 
 #define CMP(a, b) ((a) > (b) ? 1 : ((a) == (b) ? 0 : -1))
 
@@ -3441,7 +3441,7 @@ static void FUNC(sao_edge_filter_wpp_0)(uint8_t *_dst, uint8_t *_src, ptrdiff_t 
     }
     if (sao_eo_class != SAO_EO_HORIZ) {
         if (borders[1]){
-            //int offset_val = sao_offset_val[0];
+            int offset_val = sao_offset_val[0];
             x1= _mm_set1_epi8(sao_offset_val[0]);
             for (x = init_x; x < width; x+=16) {
             	x0= _mm_loadu_si128((__m128i*)(src+x));
@@ -3452,14 +3452,14 @@ static void FUNC(sao_edge_filter_wpp_0)(uint8_t *_dst, uint8_t *_src, ptrdiff_t 
             init_y = 1;
         }
         if (borders[3]){
-            //int offset_val = sao_offset_val[0];
+            int offset_val = sao_offset_val[0];
             x1= _mm_set1_epi8(sao_offset_val[0]);
             int y_stride   = stride * (_height-1);
             for (x = init_x; x < width; x+=16) {
             	x0= _mm_loadu_si128((__m128i*)(src+x+y_stride));
             	            	x0= _mm_add_epi8(x0,x1);
-            	            	_mm_storeu_si128((__m128i*)(dst+x+y_stride),x0);
-               // dst[x + y_stride] = av_clip_pixel(src[x + y_stride] + offset_val);
+            	            _mm_storeu_si128((__m128i*)(dst+x+y_stride),x0);
+                //dst[x + y_stride] = av_clip_pixel(src[x + y_stride] + offset_val);
             }
             height--;
         }
@@ -3471,15 +3471,128 @@ static void FUNC(sao_edge_filter_wpp_0)(uint8_t *_dst, uint8_t *_src, ptrdiff_t 
         int pos_1_0      = pos[sao_eo_class][1][0];
         int pos_1_1      = pos[sao_eo_class][1][1];
 
-        int y_stride_0_1 = (init_y + pos_0_1) * stride;
-        int y_stride_1_1 = (init_y + pos_1_1) * stride;
+        int y_stride_0_1 = (init_y + pos_0_1) * stride + pos_0_0;
+        int y_stride_1_1 = (init_y + pos_1_1) * stride + pos_1_0;
+
+        offset0= _mm_set1_epi8(sao_offset_val[edge_idx[0]]);
+        offset1= _mm_set1_epi8(sao_offset_val[edge_idx[1]]);
+        offset2= _mm_set1_epi8(sao_offset_val[edge_idx[2]]);
+        offset3= _mm_set1_epi8(sao_offset_val[edge_idx[3]]);
+        offset4= _mm_set1_epi8(sao_offset_val[edge_idx[4]]);
+
         for (y = init_y; y < height; y++) {
-            for (x = init_x; x < width; x++) {
-                int diff0         = CMP(src[x + y_stride], src[x + pos_0_0 + y_stride_0_1]);
-                int diff1         = CMP(src[x + y_stride], src[x + pos_1_0 + y_stride_1_1]);
-                int offset_val    = edge_idx[2 + diff0 + diff1];
-                dst[x + y_stride] = av_clip_pixel(src[x + y_stride] + sao_offset_val[offset_val]);
+            for (x = init_x; x < width-15; x+=16) {
+
+            	x0= _mm_loadu_si128((__m128i*)(src+x + y_stride));
+            	cmp0= _mm_loadu_si128((__m128i*)(src+x + y_stride_0_1));
+            	cmp1= _mm_loadu_si128((__m128i*)(src+x + y_stride_1_1));
+
+            	r0= _mm_unpacklo_epi8(x0,_mm_setzero_si128());
+            	r1= _mm_unpackhi_epi8(x0,_mm_setzero_si128());
+            	r3= _mm_unpacklo_epi8(cmp0,_mm_setzero_si128());
+            	r4= _mm_unpackhi_epi8(cmp0,_mm_setzero_si128());
+
+            	x1= _mm_cmpgt_epi16(r0,r3);
+            	r2= _mm_cmpgt_epi16(r1,r4);
+            	x1= _mm_packs_epi16(x1,r2);
+            	x2= _mm_cmplt_epi16(r0,r3);
+            	r2= _mm_cmplt_epi16(r1,r4);
+            	x2= _mm_packs_epi16(x2,r2);
+            	x1= _mm_and_si128(x1,_mm_set1_epi8(1));
+            	x1= _mm_add_epi8(x1, x2);
+
+        		r3= _mm_unpacklo_epi8(cmp1,_mm_setzero_si128());
+        		r4= _mm_unpackhi_epi8(cmp1,_mm_setzero_si128());
+
+            	x3= _mm_cmpgt_epi16(r0,r3);
+            	r2= _mm_cmpgt_epi16(r1,r4);
+            	x3= _mm_packs_epi16(x3,r2);
+            	x2= _mm_cmplt_epi16(r0,r3);
+            	r2= _mm_cmplt_epi16(r1,r4);
+            	x2= _mm_packs_epi16(x2,r2);
+            	x3= _mm_and_si128(x3,_mm_set1_epi8(1));
+            	x3= _mm_add_epi8(x3, x2);
+            	x1= _mm_add_epi8(x1,x3);
+
+
+            	//x1 : contains -2 -> 2
+
+            	r0= _mm_cmpeq_epi8(x1, _mm_set1_epi8(-2));
+            	r1= _mm_cmpeq_epi8(x1, _mm_set1_epi8(-1));
+            	r2= _mm_cmpeq_epi8(x1, _mm_set1_epi8(0));
+            	r3= _mm_cmpeq_epi8(x1, _mm_set1_epi8(1));
+            	r4= _mm_cmpeq_epi8(x1, _mm_set1_epi8(2));
+            	r0= _mm_and_si128(r0,offset0);
+            	r1= _mm_and_si128(r1,offset1);
+            	r2= _mm_and_si128(r2,offset2);
+            	r3= _mm_and_si128(r3,offset3);
+            	r4= _mm_and_si128(r4,offset4);
+            	r0= _mm_add_epi8(r0,r1);
+            	r2= _mm_add_epi8(r2,r3);
+            	r0= _mm_add_epi8(r0,r4);
+            	r0= _mm_add_epi8(r0,r2);
+            	r0= _mm_add_epi8(x0,r0);
+
+
+            	_mm_storeu_si128((__m128i*)(dst + x + y_stride),r0);
+           }
+        	x0= _mm_loadu_si128((__m128i*)(src+x + y_stride));
+        	cmp0= _mm_loadu_si128((__m128i*)(src+x + y_stride_0_1));
+        	cmp1= _mm_loadu_si128((__m128i*)(src+x + y_stride_1_1));
+
+        	r0= _mm_unpacklo_epi8(x0,_mm_setzero_si128());
+        	r1= _mm_unpackhi_epi8(x0,_mm_setzero_si128());
+        	r3= _mm_unpacklo_epi8(cmp0,_mm_setzero_si128());
+        	r4= _mm_unpackhi_epi8(cmp0,_mm_setzero_si128());
+
+        	x1= _mm_cmpgt_epi16(r0,r3);
+        	r2= _mm_cmpgt_epi16(r1,r4);
+        	x1= _mm_packs_epi16(x1,r2);
+        	x2= _mm_cmplt_epi16(r0,r3);
+        	r2= _mm_cmplt_epi16(r1,r4);
+        	x2= _mm_packs_epi16(x2,r2);
+        	x1= _mm_and_si128(x1,_mm_set1_epi8(1));
+        	x1= _mm_add_epi8(x1, x2);
+
+    		r3= _mm_unpacklo_epi8(cmp1,_mm_setzero_si128());
+    		r4= _mm_unpackhi_epi8(cmp1,_mm_setzero_si128());
+
+        	x3= _mm_cmpgt_epi16(r0,r3);
+        	r2= _mm_cmpgt_epi16(r1,r4);
+        	x3= _mm_packs_epi16(x3,r2);
+        	x2= _mm_cmplt_epi16(r0,r3);
+        	r2= _mm_cmplt_epi16(r1,r4);
+        	x2= _mm_packs_epi16(x2,r2);
+        	x3= _mm_and_si128(x3,_mm_set1_epi8(1));
+        	x3= _mm_add_epi8(x3, x2);
+        	x1= _mm_add_epi8(x1,x3);
+
+
+        	//x1 : contains -2 -> 2
+
+        	r0= _mm_cmpeq_epi8(x1, _mm_set1_epi8(-2));
+        	r1= _mm_cmpeq_epi8(x1, _mm_set1_epi8(-1));
+        	r2= _mm_cmpeq_epi8(x1, _mm_set1_epi8(0));
+        	r3= _mm_cmpeq_epi8(x1, _mm_set1_epi8(1));
+        	r4= _mm_cmpeq_epi8(x1, _mm_set1_epi8(2));
+        	r0= _mm_and_si128(r0,offset0);
+        	r1= _mm_and_si128(r1,offset1);
+        	r2= _mm_and_si128(r2,offset2);
+        	r3= _mm_and_si128(r3,offset3);
+        	r4= _mm_and_si128(r4,offset4);
+        	r0= _mm_add_epi8(r0,r1);
+        	r2= _mm_add_epi8(r2,r3);
+        	r0= _mm_add_epi8(r0,r4);
+        	r0= _mm_add_epi8(r0,r2);
+        	r0= _mm_add_epi8(x0,r0);
+
+
+            for(; x < width; x++)
+            {
+            	dst[x+y_stride]=_mm_extract_epi8(r0,0);
+            	r0= _mm_srli_si128(r0,1);
             }
+
             y_stride     += stride;
             y_stride_0_1 += stride;
             y_stride_1_1 += stride;
@@ -4857,6 +4970,8 @@ static void FUNC(weighted_pred_avg)(uint8_t denom, int16_t wl0Flag, int16_t wl1F
     o0 = (ol0Flag) * ( 1 << ( BIT_DEPTH - 8 ) );
     o1 = (ol1Flag) * ( 1 << ( BIT_DEPTH - 8 ) );
     shift2= (log2Wd + 1);
+    w0 = wl0Flag;
+    w1 = wl1Flag;
     c0= _mm_set1_epi16(wl0Flag);
     c1= _mm_set1_epi16(wl1Flag);
     c2= _mm_set1_epi32((o0 + o1 + 1) << log2Wd);
@@ -4867,6 +4982,7 @@ static void FUNC(weighted_pred_avg)(uint8_t denom, int16_t wl0Flag, int16_t wl1F
             x1= _mm_load_si128((__m128i*)&src1[x+8]);
             x2= _mm_load_si128((__m128i*)&src2[x]);
             x3= _mm_load_si128((__m128i*)&src2[x+8]);
+
             r0= _mm_unpacklo_epi16(_mm_mullo_epi16(x0,c0),_mm_mulhi_epi16(x0,c0));
             r1= _mm_unpacklo_epi16(_mm_mullo_epi16(x1,c0),_mm_mulhi_epi16(x1,c0));
             r2= _mm_unpacklo_epi16(_mm_mullo_epi16(x2,c1),_mm_mulhi_epi16(x2,c1));
@@ -4875,7 +4991,6 @@ static void FUNC(weighted_pred_avg)(uint8_t denom, int16_t wl0Flag, int16_t wl1F
             x1= _mm_unpackhi_epi16(_mm_mullo_epi16(x1,c0),_mm_mulhi_epi16(x1,c0));
             x2= _mm_unpackhi_epi16(_mm_mullo_epi16(x2,c1),_mm_mulhi_epi16(x2,c1));
             x3= _mm_unpackhi_epi16(_mm_mullo_epi16(x3,c1),_mm_mulhi_epi16(x3,c1));
-
             r0= _mm_add_epi32(r0,r2);
             r1= _mm_add_epi32(r1,r3);
             r2= _mm_add_epi32(x0,x2);
@@ -4891,11 +5006,12 @@ static void FUNC(weighted_pred_avg)(uint8_t denom, int16_t wl0Flag, int16_t wl1F
             r2= _mm_srai_epi32(r2,shift2);
             r3= _mm_srai_epi32(r3,shift2);
 
-            r0= _mm_packs_epi32(r0,r2);
-            r1= _mm_packs_epi32(r1,r3);
+            r0= _mm_packus_epi32(r0,r2);
+            r1= _mm_packus_epi32(r1,r3);
             r0= _mm_packus_epi16(r0,r1);
 
-            _mm_storeu_si128((__m128i*)dst+x,r0);
+            _mm_storeu_si128((__m128i*)(dst+x),r0);
+
 
         }
         dst  += dststride;
@@ -4904,7 +5020,41 @@ static void FUNC(weighted_pred_avg)(uint8_t denom, int16_t wl0Flag, int16_t wl1F
     }
 }
 
+/*
+ *
+ * static void FUNC(weighted_pred_avg)(uint8_t denom, int16_t wl0Flag, int16_t wl1Flag,
+                                         int16_t ol0Flag, int16_t ol1Flag, uint8_t *_dst, ptrdiff_t _dststride,
+                                         int16_t *src1, int16_t *src2, ptrdiff_t srcstride,
+                                         int width, int height)
+{
+    int shift;
+    int log2Wd;
+    int w0;
+    int w1;
+    int o0;
+    int o1;
+    int x , y;
+    pixel *dst = (pixel*)_dst;
+    ptrdiff_t dststride = _dststride/sizeof(pixel);
 
+    shift = 14 - BIT_DEPTH;
+    log2Wd = denom + shift;
+    w0 = wl0Flag;
+    w1 = wl1Flag;
+    o0 = (ol0Flag) * ( 1 << ( BIT_DEPTH - 8 ) );
+    o1 = (ol1Flag) * ( 1 << ( BIT_DEPTH - 8 ) );
+
+    for (y = 0; y < height; y++) {
+        for (x = 0; x < width; x++) {
+            dst[x] = av_clip_pixel((src1[x] * w0 + src2[x] * w1 + ((o0 + o1 + 1) << log2Wd)) >> (log2Wd + 1));
+        }
+        dst  += dststride;
+        src1 += srcstride;
+        src2 += srcstride;
+    }
+}
+ *
+ */
 // line zero
 #define P3 pix[-4*xstride]
 #define P2 pix[-3*xstride]
