@@ -5170,6 +5170,9 @@ static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptr
 
         l1= _mm_cmplt_epi16(l1,_mm_set_epi16(1,1,beta_2,beta_2,tc25,beta_3,tc25,beta_3));
 
+
+        if(_mm_test_all_ones(l1)) {
+
             // strong filtering
             const int tc2 = tc << 1;
             for(d = 0; d < 4; d++) {
@@ -5194,19 +5197,7 @@ static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptr
                 pix += ystride;
             }
         } else { // normal filtering
-        	if(_mm_test_all_ones(l1)){
-        	        		printf("----------------------------something is wrong 2!\n");
-        	        		printf("abs1 = %d\n",abs( P3 -  P0));
-        	        		printf("abs2  = %d\n",abs( Q3 -  Q0));
-        	        		printf("abs3  = %d\n",abs( P0 -  Q0));
-        	        		printf("abs4 = %d\n",abs(TP3 - TP0));
-        	        		printf("abs5  = %d\n",abs(TQ3 - TQ0));
-        	        		printf("abs6 = %d\n",abs(TP0 - TQ0));
-        	        		printf("d0 = %d\n",d0);
-        	        		printf("d3 = %d \n", d3);
-        	        		printf("tc25 = %d\n",tc25);
-        	        		exit(1);
-        	        	}
+
             int nd_p = 1;
             int nd_q = 1;
             const int tc_2 = tc >> 1;
