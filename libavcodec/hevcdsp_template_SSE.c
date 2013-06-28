@@ -5020,41 +5020,6 @@ static void FUNC(weighted_pred_avg)(uint8_t denom, int16_t wl0Flag, int16_t wl1F
     }
 }
 
-/*
- *
- * static void FUNC(weighted_pred_avg)(uint8_t denom, int16_t wl0Flag, int16_t wl1Flag,
-                                         int16_t ol0Flag, int16_t ol1Flag, uint8_t *_dst, ptrdiff_t _dststride,
-                                         int16_t *src1, int16_t *src2, ptrdiff_t srcstride,
-                                         int width, int height)
-{
-    int shift;
-    int log2Wd;
-    int w0;
-    int w1;
-    int o0;
-    int o1;
-    int x , y;
-    pixel *dst = (pixel*)_dst;
-    ptrdiff_t dststride = _dststride/sizeof(pixel);
-
-    shift = 14 - BIT_DEPTH;
-    log2Wd = denom + shift;
-    w0 = wl0Flag;
-    w1 = wl1Flag;
-    o0 = (ol0Flag) * ( 1 << ( BIT_DEPTH - 8 ) );
-    o1 = (ol1Flag) * ( 1 << ( BIT_DEPTH - 8 ) );
-
-    for (y = 0; y < height; y++) {
-        for (x = 0; x < width; x++) {
-            dst[x] = av_clip_pixel((src1[x] * w0 + src2[x] * w1 + ((o0 + o1 + 1) << log2Wd)) >> (log2Wd + 1));
-        }
-        dst  += dststride;
-        src1 += srcstride;
-        src2 += srcstride;
-    }
-}
- *
- */
 // line zero
 #define P3 pix[-4*xstride]
 #define P2 pix[-3*xstride]
@@ -5075,13 +5040,13 @@ static void FUNC(weighted_pred_avg)(uint8_t denom, int16_t wl0Flag, int16_t wl1F
 #define TQ2 pix[2*xstride+3*ystride]
 #define TQ3 pix[3*xstride+3*ystride]
 
-static void FUNC(hevc_loop_filter_luma)(uint8_t *_pix, ptrdiff_t _xstride, ptrdiff_t _ystride,
+static void FUNC(hevc_loop_filter_luma_h)(uint8_t *_pix, ptrdiff_t _xstride, ptrdiff_t _ystride,
                                         int no_p, int no_q, int _beta, int _tc)
 {
     int d;
     pixel *pix = (pixel*)_pix;
     ptrdiff_t xstride = _xstride/sizeof(pixel);
-    ptrdiff_t ystride = _ystride/sizeof(pixel);
+    ptrdiff_t ystride = 1;
     const int dp0 = abs(P2 - 2 * P1 +  P0);
     const int dq0 = abs(Q2 - 2 * Q1 +  Q0);
     const int dp3 = abs(TP2 - 2 * TP1 + TP0);
@@ -5124,6 +5089,124 @@ static void FUNC(hevc_loop_filter_luma)(uint8_t *_pix, ptrdiff_t _xstride, ptrdi
                 pix += ystride;
             }
         } else { // normal filtering
+            int nd_p = 1;
+            int nd_q = 1;
+            const int tc_2 = tc >> 1;
+            if (dp0 + dp3 < ((beta+(beta>>1))>>3))
+                nd_p = 2;
+            if (dq0 + dq3 < ((beta+(beta>>1))>>3))
+                nd_q = 2;
+
+            for(d = 0; d < 4; d++) {
+                const int p2 = P2;
+                const int p1 = P1;
+                const int p0 = P0;
+                const int q0 = Q0;
+                const int q1 = Q1;
+                const int q2 = Q2;
+                int delta0 = (9*(q0 - p0) - 3*(q1 - p1) + 8) >> 4;
+                if (abs(delta0) < 10 * tc) {
+                    delta0 = av_clip_c(delta0, -tc, tc);
+                    if(!no_p)
+                        P0 = av_clip_pixel(p0 + delta0);
+                    if(!no_q)
+                        Q0 = av_clip_pixel(q0 - delta0);
+                    if(!no_p && nd_p > 1) {
+                        const int deltap1 = av_clip_c((((p2 + p0 + 1) >> 1) - p1 + delta0) >> 1, -tc_2, tc_2);
+                        P1 = av_clip_pixel(p1 + deltap1);
+                    }
+                    if(!no_q && nd_q > 1) {
+                        const int deltaq1 = av_clip_c((((q2 + q0 + 1) >> 1) - q1 - delta0) >> 1, -tc_2, tc_2);
+                        Q1 = av_clip_pixel(q1 + deltaq1);
+                    }
+                }
+                pix += ystride;
+            }
+        }
+    }
+}
+
+static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptrdiff_t _ystride,
+                                        int no_p, int no_q, int _beta, int _tc)
+{
+    int d;
+    pixel *pix = (pixel*)_pix;
+    ptrdiff_t xstride = 1;
+    ptrdiff_t ystride = _ystride/sizeof(pixel);
+    __m128i l0, l1, l3, t1, t2;
+    //load line 0
+    l0= _mm_loadl_epi64((__m128i*)(pix - 4));
+    //load line 3
+    l3= _mm_loadl_epi64((__m128i*)(pix - 4 + 3*ystride));
+
+    l0= _mm_unpacklo_epi64(l0,l3);	//contains line 0 AND line 3
+
+    l1= _mm_maddubs_epi16(l0,_mm_set_epi8(0,1,-2,1,1,-2,1,0,0,1,-2,1,1,-2,1,0));
+
+    l1= _mm_hadd_epi16(l1, _mm_setzero_si128());
+    t1= _mm_abs_epi16(l1);							//contains dp0, dq0, dp3 and dq3;
+    t2= _mm_hadd_epi16(t1, _mm_setzero_si128());	//contains d0 and d3
+
+
+    const int dp0 = _mm_extract_epi16(t1,0);
+    const int dq0 = _mm_extract_epi16(t1,1);
+    const int dp3 = _mm_extract_epi16(t1,2);
+    const int dq3 = _mm_extract_epi16(t1,3);
+    const int d0 = _mm_extract_epi16(t2,0);
+    const int d3 = _mm_extract_epi16(t2,1);
+
+    const int beta = _beta << (BIT_DEPTH - 8);
+    const int tc = _tc << (BIT_DEPTH - 8);
+    if (_mm_extract_epi16(_mm_hadd_epi16(t2, _mm_setzero_si128()),0) < beta) {
+        const int beta_3 = beta >> 3;
+        const int beta_2 = beta >> 2;
+        const int tc25 = ((tc * 5 + 1) >> 1);
+
+        l1= _mm_shuffle_epi8(l0,_mm_set_epi8(-1,-1,12,11,12,15,11,8,-1,-1,4,3,4,7,3,0));
+        l1= _mm_maddubs_epi16(l1,_mm_set_epi8(0, 0,-1,1,-1,1,-1,1,0,0,-1,1,-1,1,-1,1));
+        l1= _mm_abs_epi16(l1);
+        l1= _mm_hadd_epi16(l1,_mm_setzero_si128());
+        l1= _mm_or_si128(l1,_mm_slli_epi16(_mm_slli_si128(t2,8),1));
+
+        l1= _mm_cmplt_epi16(l1,_mm_set_epi16(1,1,beta_2,beta_2,tc25,beta_3,tc25,beta_3));
+
+            // strong filtering
+            const int tc2 = tc << 1;
+            for(d = 0; d < 4; d++) {
+                const int p3 = P3;
+                const int p2 = P2;
+                const int p1 = P1;
+                const int p0 = P0;
+                const int q0 = Q0;
+                const int q1 = Q1;
+                const int q2 = Q2;
+                const int q3 = Q3;
+                if(!no_p) {
+                    P0 = av_clip_c(( p2 + 2*p1 + 2*p0 + 2*q0 + q1 + 4 ) >> 3, p0-tc2, p0+tc2);
+                    P1 = av_clip_c(( p2 + p1 + p0 + q0 + 2 ) >> 2, p1-tc2, p1+tc2);
+                    P2 = av_clip_c(( 2*p3 + 3*p2 + p1 + p0 + q0 + 4 ) >> 3, p2-tc2, p2+tc2);
+                }
+                if(!no_q) {
+                    Q0 = av_clip_c(( p1 + 2*p0 + 2*q0 + 2*q1 + q2 + 4 ) >> 3, q0-tc2, q0+tc2);
+                    Q1 = av_clip_c(( p0 + q0 + q1 + q2 + 2 ) >> 2, q1-tc2, q1+tc2);
+                    Q2 = av_clip_c(( 2*q3 + 3*q2 + q1 + q0 + p0 + 4 ) >> 3, q2-tc2, q2+tc2);
+                }
+                pix += ystride;
+            }
+        } else { // normal filtering
+        	if(_mm_test_all_ones(l1)){
+        	        		printf("----------------------------something is wrong 2!\n");
+        	        		printf("abs1 = %d\n",abs( P3 -  P0));
+        	        		printf("abs2  = %d\n",abs( Q3 -  Q0));
+        	        		printf("abs3  = %d\n",abs( P0 -  Q0));
+        	        		printf("abs4 = %d\n",abs(TP3 - TP0));
+        	        		printf("abs5  = %d\n",abs(TQ3 - TQ0));
+        	        		printf("abs6 = %d\n",abs(TP0 - TQ0));
+        	        		printf("d0 = %d\n",d0);
+        	        		printf("d3 = %d \n", d3);
+        	        		printf("tc25 = %d\n",tc25);
+        	        		exit(1);
+        	        	}
             int nd_p = 1;
             int nd_q = 1;
             const int tc_2 = tc >> 1;

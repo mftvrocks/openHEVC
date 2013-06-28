@@ -65,7 +65,7 @@ typedef struct HEVCDSPContext {
     void (*weighted_pred_avg)(uint8_t denom, int16_t wl0Flag, int16_t wl1Flag, int16_t ol0Flag, int16_t ol1Flag,
                                    uint8_t *dst, ptrdiff_t dststride, int16_t *src1, int16_t *src2,
                                    ptrdiff_t srcstride, int width, int height);
-    void (*hevc_loop_filter_luma)(uint8_t *_pix, ptrdiff_t _xstride, ptrdiff_t _ystride, int no_p, int no_q, int _beta, int _tc);
+    void (*hevc_loop_filter_luma[2])(uint8_t *_pix, ptrdiff_t _xstride, ptrdiff_t _ystride, int no_p, int no_q, int _beta, int _tc);
     void (*hevc_loop_filter_chroma)(uint8_t *_pix, ptrdiff_t _xstride, ptrdiff_t _ystride, int no_p, int no_q, int _tc);
     void (*upsample_base_layer_frame)(AVFrame *FrameEL, AVFrame *FrameBL, AVFrame *Buffer, const int32_t enabled_up_sample_filter_luma[16][8], const int32_t enabled_up_sample_filter_chroma[12][4], struct HEVCWindow *Enhscal);
 } HEVCDSPContext;

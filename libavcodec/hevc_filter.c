@@ -261,7 +261,7 @@ void ff_hevc_deblocking_filter_CTB(HEVCContext *s, int x0, int y0)
                         no_q = 1;
                 }
                 src = &sc->frame->data[LUMA][y * sc->frame->linesize[LUMA] + x];
-                sc->hevcdsp.hevc_loop_filter_luma(src, pixel, sc->frame->linesize[LUMA], no_p, no_q, beta, tc);
+                sc->hevcdsp.hevc_loop_filter_luma[0](src, pixel, sc->frame->linesize[LUMA], no_p, no_q, beta, tc);
 
                 if ((x & 15) == 0 && (y & 7) == 0 && bs == 2) {
                     src = &sc->frame->data[CB][(y / 2) * sc->frame->linesize[CB] + (x / 2)];
@@ -296,7 +296,7 @@ void ff_hevc_deblocking_filter_CTB(HEVCContext *s, int x0, int y0)
                         no_q = 1;
                 }
                 src = &sc->frame->data[LUMA][y * sc->frame->linesize[LUMA] + x];
-                sc->hevcdsp.hevc_loop_filter_luma(src, sc->frame->linesize[LUMA], pixel, no_p, no_q, beta, tc);
+                sc->hevcdsp.hevc_loop_filter_luma[1](src, sc->frame->linesize[LUMA], pixel, no_p, no_q, beta, tc);
                 if ((x & 7) == 0 && (y & 15) == 0 && bs == 2) {
                     src = &sc->frame->data[CB][(y / 2) * sc->frame->linesize[CB] + (x / 2)];
                     sc->hevcdsp.hevc_loop_filter_chroma(src, sc->frame->linesize[CB], pixel, no_p, no_q, chroma_tc(sc, qp, CB, tc_offset));

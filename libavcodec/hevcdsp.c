@@ -111,7 +111,8 @@ void ff_hevc_dsp_init(HEVCDSPContext *hevcdsp, int bit_depth)
     hevcdsp->weighted_pred = FUNC(weighted_pred, depth);              \
     hevcdsp->weighted_pred_avg = FUNC(weighted_pred_avg, depth);      \
                                                                                 \
-    hevcdsp->hevc_loop_filter_luma = FUNC(hevc_loop_filter_luma, depth);        \
+    hevcdsp->hevc_loop_filter_luma[0] = FUNC(hevc_loop_filter_luma_v, depth);        \
+    hevcdsp->hevc_loop_filter_luma[1] = FUNC(hevc_loop_filter_luma_h, depth);        \
     hevcdsp->hevc_loop_filter_chroma = FUNC(hevc_loop_filter_chroma, depth);
 
     switch (bit_depth) {
