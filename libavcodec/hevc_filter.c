@@ -220,7 +220,7 @@ void ff_hevc_deblocking_filter_CTB(HEVCContext *s, int x0, int y0)
     HEVCSharedContext *sc = s->HEVCsc;
     int pixel = 1 + !!(sc->sps->bit_depth - 8); // sizeof(pixel)
 
-    int pic_width_in_min_pu = sc->sps->pic_width_in_min_cbs * 4;
+    int pic_width_in_min_pu =  sc->sps->pic_width_in_luma_samples >> sc->sps->log2_min_pu_size;//sc->sps->pic_width_in_min_cbs * 4;
     int min_pu_size = 1 << sc->sps->log2_min_pu_size;
     int log2_min_pu_size = sc->sps->log2_min_pu_size;
     int log2_ctb_size =  sc->sps->log2_ctb_size;
@@ -397,7 +397,7 @@ void ff_hevc_deblocking_boundary_strengths(HEVCContext *s, int x0, int y0, int l
     HEVCSharedContext *sc = s->HEVCsc; 
     int log2_min_pu_size = sc->sps->log2_min_pu_size;
     int min_pu_size = 1 << sc->sps->log2_min_pu_size;
-    int pic_width_in_min_pu = sc->sps->pic_width_in_min_cbs * 4;
+    int pic_width_in_min_pu =  sc->sps->pic_width_in_luma_samples >> sc->sps->log2_min_pu_size;
     int i, j;
     int bs;
     MvField *tab_mvf = sc->ref->tab_mvf;

@@ -59,8 +59,8 @@
  VPS and SVC Extentions
  */
 
-//#define SVC_EXTENSION
-
+#define SVC_EXTENSION
+        
 #ifdef SVC_EXTENSION
 #define VPS_EXTENSION
 #define SCALED_REF_LAYER_OFFSETS 1
@@ -145,15 +145,19 @@ typedef struct LongTermRPS {
     uint8_t DeltaPocMsbCycleLt[32];
 } LongTermRPS;
 
+#define REF_LIST_SIZE 16
 #define ST_CURR_BEF  0
 #define ST_CURR_AFT  1
 #define ST_FOLL      2
 #define LT_CURR      3
 #define LT_FOLL      4
+#define INTER_LAYER  5
+
+
 typedef struct RefPicList {
-    int list[16];
-    int idx[16];
-    int isLongTerm[16];
+    int list[REF_LIST_SIZE];
+    int idx[REF_LIST_SIZE];
+    int isLongTerm[REF_LIST_SIZE];
     int numPic;
 } RefPicList;
 
@@ -179,8 +183,6 @@ typedef struct RefPicList {
 #define HEVC_CONTEXTS 183
 
 
-
-#define MAX_ENTRIES 100
 
 #define L0 0
 #define L1 1
@@ -606,6 +608,10 @@ typedef struct SliceHeader {
     int     active_num_ILR_ref_idx;        //< Active inter-layer reference pictures
     int     inter_layer_pred_layer_idc[MAX_VPS_LAYER_ID_PLUS1];
 #endif
+#ifdef SVC_EXTENSION
+int ScalingFactor[MAX_LAYERS][2];
+int ScalingPosition[MAX_LAYERS][2];
+#endif
 } SliceHeader;
 
 enum SyntaxElement {
@@ -833,6 +839,9 @@ typedef struct HEVCFrame {
      * after a POC reset
      */
     uint16_t sequence;
+ #ifdef SVC_EXTENSION   
+    uint16_t up_sample_base;
+#endif
 } HEVCFrame;
 typedef struct HEVCLocalContext {
     uint8_t *cabac_state;
@@ -860,7 +869,6 @@ typedef struct HEVCLocalContext {
     CodingTree ct;
     CodingUnit cu;
     PredictionUnit pu;
-
 } HEVCLocalContext;
 
 typedef struct HEVCSharedContext {
@@ -869,6 +877,12 @@ typedef struct HEVCSharedContext {
     AVFrame *frame;
     AVFrame *sao_frame;
     AVFrame *tmp_frame;
+#ifdef SVC_EXTENSION
+    AVFrame *upsampled_frame;
+    short *buffer_frame[3];
+   // int32_t *up_sample_filter_chroma;
+   // int32_t *up_sample_filter_lum;
+#endif
     VPS *vps;
     SPS *sps;
     PPS *pps;
@@ -883,7 +897,11 @@ typedef struct HEVCSharedContext {
     int temporal_id;  ///< temporal_id_plus1 - 1
     int layer_id; 
     HEVCFrame *ref;
+#ifdef SVC_EXTENSION
+    HEVCFrame DPB[32+1];
+#else
     HEVCFrame DPB[32];
+#endif
     int poc;
     int pocTid0;
     int max_ra;
@@ -929,6 +947,7 @@ typedef struct HEVCSharedContext {
     int *skipped_bytes_pos;
     int skipped_buf_size;
     uint8_t *data;
+    
     int ERROR;
 
 } HEVCSharedContext;
@@ -965,6 +984,7 @@ int ff_hevc_decode_nal_sps(HEVCContext *s);
 int ff_hevc_decode_nal_pps(HEVCContext *s);
 int ff_hevc_decode_nal_sei(HEVCContext *s);
 
+void ff_unref_upsampled_frame(HEVCSharedContext *s);
 void ff_hevc_clear_refs(HEVCContext *s);
 void ff_hevc_clean_refs(HEVCContext *s);
 int ff_hevc_add_ref(HEVCContext *s, AVFrame *frame, int poc);
@@ -1026,7 +1046,11 @@ int ff_hevc_coeff_sign_flag(HEVCContext *s, uint8_t nb);
 
 
 int ff_hevc_find_next_ref(HEVCContext *s, int poc);
+#ifdef SVC_EXTENSION
+int ff_hevc_set_new_ref(HEVCContext *s, AVFrame **frame, int poc, int up_sample_base);
+#else
 int ff_hevc_set_new_ref(HEVCContext *s, AVFrame **frame, int poc);
+#endif
 int ff_hevc_find_display(HEVCContext *s, AVFrame *frame, int flush, int* poc_display);
 
 void ff_hevc_luma_mv_merge_mode(HEVCContext *s, int x0, int y0, int nPbW, int nPbH, int log2_cb_size, int part_idx, int merge_idx, MvField *mv);

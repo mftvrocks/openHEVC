@@ -73,6 +73,9 @@ static void video_decode_example(const char *filename)
     while(!stop) {
         if (libOpenHevcDecode(openHevcHandle, buf, !feof(f) ? get_next_nal(f, buf) : 0, pts++)) {
             fflush(stdout);
+           libOpenHevcGetPictureSize2(openHevcHandle, &openHevcFrame.frameInfo);
+        //    printf("openHevcFrame.frameInfo.nWidth ----------------- %d \n", openHevcFrame.frameInfo.nWidth);
+            if(openHevcFrame.frameInfo.nWidth == 1920) {
             if (init == 1 ) {
                 if (display_flags == DISPLAY_ENABLE) {
                     libOpenHevcGetPictureSize2(openHevcHandle, &openHevcFrame.frameInfo);
@@ -95,14 +98,32 @@ static void video_decode_example(const char *filename)
                 SDL_Display((openHevcFrame.frameInfo.nYPitch - openHevcFrame.frameInfo.nWidth)/2, openHevcFrame.frameInfo.nWidth, openHevcFrame.frameInfo.nHeight,
                         openHevcFrame.pvY, openHevcFrame.pvU, openHevcFrame.pvV);
             }
-            if (fout) {
+            
+        //    libOpenHevcGetPictureSize2(openHevcHandle, &openHevcFrame.frameInfo);
+          //  printf("openHevcFrame.frameInfo.nWidth ----------------- %d \n", openHevcFrame.frameInfo.nWidth);
+            //    if(openHevcFrame.frameInfo.nWidth == 1920) {
+            if (fout && openHevcFrame.frameInfo.nWidth == 1920) {
                 int nbData = openHevcFrameCpy.frameInfo.nWidth * openHevcFrameCpy.frameInfo.nHeight;
                 libOpenHevcGetOutputCpy(openHevcHandle, 1, &openHevcFrameCpy);
+                uint8_t *piDstBufY = openHevcFrameCpy.pvU;
+                for(int i=0; i < (nbData / 4)/(openHevcFrame.frameInfo.nWidth/2); i++){
+                    for(int j=0; j < (openHevcFrameCpy.frameInfo.nWidth/2); j++){
+                        printf(" %d ", piDstBufY[j]);
+                    }
+                    piDstBufY += (openHevcFrameCpy.frameInfo.nWidth/2);
+                    printf("  \n");
+                }
+                printf("Upsample the base layer ok. \n");
+                exit(-1);
+
                 fwrite( openHevcFrameCpy.pvY , sizeof(uint8_t) , nbData    , fout);
                 fwrite( openHevcFrameCpy.pvU , sizeof(uint8_t) , nbData / 4, fout);
                 fwrite( openHevcFrameCpy.pvV , sizeof(uint8_t) , nbData / 4, fout);
-            }
+             
+          //  }
             nbFrame++;
+            }
+            }
         } else if (feof(f) && nbFrame)
             stop = 1;
     }

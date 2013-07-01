@@ -49,8 +49,9 @@ static char *program;
 
 void print_usage() {
 	printf(usage, program);
-    printf("     -n : no display\n");
-    printf("     -c : no check md5\n");
+    printf("     -n : no display \n");
+    printf("     -c : no check md5 \n");
+    printf("     -o : output yuv file \n");
     printf("     -p <number of threads> \n");
 }
 
