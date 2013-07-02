@@ -121,7 +121,7 @@ enum NALUnitType {
     NAL_AUD         = 35,
     NAL_EOS_NUT     = 36,
     NAL_EOB_NUT     = 37,
-    NAL_FILLER_DATA = 38,
+    NAL_FD_NUT      = 38,
     NAL_SEI_PREFIX  = 39,
     NAL_SEI_SUFFIX  = 40,
 };
@@ -136,6 +136,7 @@ typedef struct ShortTermRPS {
     int32_t delta_poc[32];
     uint8_t used[32];
 } ShortTermRPS;
+
 typedef struct LongTermRPS {
     uint8_t num_long_term_sps;
     uint8_t num_long_term_pics;
@@ -151,8 +152,6 @@ typedef struct LongTermRPS {
 #define ST_FOLL      2
 #define LT_CURR      3
 #define LT_FOLL      4
-#define INTER_LAYER  5
-
 
 typedef struct RefPicList {
     int list[REF_LIST_SIZE];
@@ -513,6 +512,7 @@ typedef struct PPS {
     int *row_height; ///< RowHeight
     int *col_bd; ///< ColBd
     int *row_bd; ///< RowBd
+    int *col_idxX;
 
     int *ctb_addr_rs_to_ts; ///< CtbAddrRSToTS
     int *ctb_addr_ts_to_rs; ///< CtbAddrTSToRS
@@ -843,6 +843,7 @@ typedef struct HEVCFrame {
     uint16_t up_sample_base;
 #endif
 } HEVCFrame;
+
 typedef struct HEVCLocalContext {
     uint8_t *cabac_state;
     int ctx_set;

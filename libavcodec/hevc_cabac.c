@@ -389,10 +389,6 @@ void ff_hevc_cabac_init_state(HEVCContext *s)
     printTitle("ff_hevc_cabac_init_state\n");
     int i;
     HEVCSharedContext *sc = s->HEVCsc;
-   // enum SliceType slicetype = sc->sh.slice_type;
- //   printf("slicetype: %d cabac_init_present_flag: %d cabac_init_flag: %d \n",sc->sh.slice_type, sc->pps->cabac_init_present_flag, sc->sh.cabac_init_flag );
-   // if(sc->pps->cabac_init_present_flag && sc->sh.cabac_init_flag)  {
-        
     int init_type = 2 - sc->sh.slice_type;
     ff_init_cabac_states(s->HEVClc->cc);
  //   printf("sc->sh.slice_type %d slicetype %d \n", sc->sh.slice_type, sc->sh.slice_type);
@@ -421,7 +417,7 @@ void ff_hevc_cabac_init(HEVCContext *s, int ctb_addr_ts)
         printTitle("ts = %d , slice_ctb_addr_rs = %d , dependent_slice_segment_flag = %d\n", ctb_addr_ts, sc->pps->ctb_addr_rs_to_ts[sc->sh.slice_ctb_addr_rs], sc->sh.dependent_slice_segment_flag);
         ff_hevc_cabac_init_decoder(s);
         if ((sc->sh.dependent_slice_segment_flag == 0) ||
-                (sc->pps->tiles_enabled_flag && (sc->pps->tile_id[ctb_addr_ts] != sc->pps->tile_id[ctb_addr_ts-1])))
+            (sc->pps->tiles_enabled_flag && (sc->pps->tile_id[ctb_addr_ts] != sc->pps->tile_id[ctb_addr_ts-1])))
             ff_hevc_cabac_init_state(s);
 
         if (!sc->sh.first_slice_in_pic_flag && sc->pps->entropy_coding_sync_enabled_flag) {
@@ -536,7 +532,7 @@ int ff_hevc_cu_transquant_bypass_flag_decode(HEVCContext *s)
 
 int ff_hevc_skip_flag_decode(HEVCContext *s, int x0, int y0, int x_cb, int y_cb)
 {
-    HEVCSharedContext * sc = s->HEVCsc; 
+    HEVCSharedContext * sc = s->HEVCsc;
     int pic_width_in_ctb = sc->sps->pic_width_in_luma_samples>>sc->sps->log2_min_coding_block_size;
     int inc = 0;
     int x0b = x0 & ((1 << sc->sps->log2_ctb_size) - 1);
@@ -585,7 +581,7 @@ int ff_hevc_pred_mode_decode(HEVCContext *s)
 }
 int ff_hevc_split_coding_unit_flag_decode(HEVCContext *s, int ct_depth, int x0, int y0)
 {
-    HEVCSharedContext * sc = s->HEVCsc; 
+    HEVCSharedContext * sc = s->HEVCsc;
     int inc = 0, depth_left = 0, depth_top = 0;
     int x0b = x0 & ((1 << sc->sps->log2_ctb_size) - 1);
     int y0b = y0 & ((1 << sc->sps->log2_ctb_size) - 1);
@@ -602,7 +598,7 @@ int ff_hevc_split_coding_unit_flag_decode(HEVCContext *s, int ct_depth, int x0, 
 
 int ff_hevc_part_mode_decode(HEVCContext *s, int log2_cb_size)
 {
-    HEVCSharedContext * sc = s->HEVCsc; 
+    HEVCSharedContext * sc = s->HEVCsc;
     print_cabac("part_mode", 0);
     if (GET_CABAC(elem_offset[PART_MODE])) // 1
         return PART_2Nx2N;
@@ -992,12 +988,12 @@ int ff_hevc_coeff_abs_level_remaining(HEVCContext *s, int first_elem, int base_l
         for (i = 0; i < prefix - 3 + lc->c_rice_param; i++)
             suffix = (suffix << 1) | get_cabac_bypass(s->HEVClc->cc);
         lc->last_coeff_abs_level_remaining = (((1 << (prefix - 3)) + 3 - 1)
-                                          << lc->c_rice_param) + suffix;
+                                              << lc->c_rice_param) + suffix;
     }
 
     lc->c_rice_param = FFMIN(lc->c_rice_param +
-                         ((base_level + lc->last_coeff_abs_level_remaining) >
-                          (3 * (1 << lc->c_rice_param))), 4);
+                             ((base_level + lc->last_coeff_abs_level_remaining) >
+                              (3 * (1 << lc->c_rice_param))), 4);
 
     return lc->last_coeff_abs_level_remaining;
 }

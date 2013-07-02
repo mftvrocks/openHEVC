@@ -41,7 +41,7 @@ int ff_hevc_decode_short_term_rps(HEVCLocalContext *lc, int idx, SPS *sps)
     int abs_delta_rps;
 
     int i;
-    
+
     GetBitContext *gb = lc->gb;
 
     ShortTermRPS *rps = &sps->short_term_rps_list[idx];
@@ -503,7 +503,7 @@ int ff_hevc_decode_nal_vps(HEVCContext *s)
         vps->vps_num_reorder_pics[i] = get_ue_golomb(gb);
         vps->vps_max_latency_increase[i] = get_ue_golomb(gb);
         
-        if (vps->vps_max_dec_pic_buffering[i] >= MAX_DPB_SIZE) {
+        if (vps->vps_max_dec_pic_buffering[i] > MAX_DPB_SIZE) {
             av_log(s->avctx, AV_LOG_ERROR, "vps_max_dec_pic_buffering_minus1 out of range: %d\n",
                    vps->vps_max_dec_pic_buffering[i] - 1);
             goto err;
@@ -561,7 +561,7 @@ int ff_hevc_decode_nal_sps(HEVCContext *s)
     SPS *sps = av_mallocz(sizeof(*sps));
     if (!sps)
         goto err;
-    
+
     av_log(s->avctx, AV_LOG_DEBUG, "Decoding SPS\n");
 
     memset(sps->short_term_rps_list, 0, sizeof(sps->short_term_rps_list));
@@ -742,6 +742,7 @@ int ff_hevc_decode_nal_sps(HEVCContext *s)
 
     sps->qp_bd_offset = 6 * (sps->bit_depth - 8);
 
+
     av_free(s->HEVCsc->sps_list[sps_id]);
     s->HEVCsc->sps_list[sps_id] = sps;
     return 0;
@@ -852,8 +853,12 @@ int ff_hevc_decode_nal_pps(HEVCContext *s)
             pps->row_height[pps->num_tile_rows - 1] = sps->pic_height_in_ctbs - sum;
         }
         pps->loop_filter_across_tiles_enabled_flag = get_bits1(gb);
+        if (pps->loop_filter_across_tiles_enabled_flag)
+            av_log(s->avctx, AV_LOG_ERROR,
+                   "loop filter across tiles enabled\n");
+
     }
-    
+
 
     pps->seq_loop_filter_across_slices_enabled_flag = get_bits1(gb);
 
@@ -880,7 +885,8 @@ int ff_hevc_decode_nal_pps(HEVCContext *s)
     // Inferred parameters
     pps->col_bd = av_malloc((pps->num_tile_columns + 1) * sizeof(*pps->col_bd));
     pps->row_bd = av_malloc((pps->num_tile_rows + 1) * sizeof(*pps->row_bd));
-    if (!pps->col_bd || !pps->row_bd)
+    pps->col_idxX = av_malloc(sps->pic_width_in_ctbs * sizeof(*pps->col_idxX));
+    if (!pps->col_bd || !pps->row_bd || !pps->col_idxX)
         goto err;
 
     if (pps->uniform_spacing_flag) {
@@ -907,6 +913,10 @@ int ff_hevc_decode_nal_pps(HEVCContext *s)
     pps->row_bd[0] = 0;
     for (i = 0; i < pps->num_tile_rows; i++)
         pps->row_bd[i+1] = pps->row_bd[i] + pps->row_height[i];
+    for (i = 0, j = 0; i < sps->pic_width_in_ctbs; i++) {
+         if (i > pps->col_bd[j]) j++;
+         pps->col_idxX[i] = j;
+    }
 
     /**
      * 6.5
@@ -1005,6 +1015,7 @@ int ff_hevc_decode_nal_pps(HEVCContext *s)
         av_free(pps_f->row_height);
         av_free(pps_f->col_bd);
         av_free(pps_f->row_bd);
+        av_free(pps_f->col_idxX);
         av_free(pps_f->ctb_addr_rs_to_ts);
         av_free(pps_f->ctb_addr_ts_to_rs);
         av_free(pps_f->tile_id);
@@ -1021,6 +1032,7 @@ err:
     av_free(pps->row_height);
     av_free(pps->col_bd);
     av_free(pps->row_bd);
+    av_free(pps->col_idxX);
     av_free(pps->ctb_addr_rs_to_ts);
     av_free(pps->ctb_addr_ts_to_rs);
     av_free(pps->tile_id);

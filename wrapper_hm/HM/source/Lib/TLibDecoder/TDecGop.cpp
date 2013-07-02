@@ -301,7 +301,7 @@ static void calcAndPrintHashStatus(TComPicYuv& pic, const SEIDecodedPictureHash*
   const Char* ok = "";
   Bool mismatch = false;
 
-  if (pictureHashSEI)
+/*  if (pictureHashSEI)
   {
     ok = "(OK)";
     for(Int yuvIdx = 0; yuvIdx < 3; yuvIdx++)
@@ -315,7 +315,8 @@ static void calcAndPrintHashStatus(TComPicYuv& pic, const SEIDecodedPictureHash*
         }
       }
     }
-  }
+  }*/
+    ok= "";
 
   printf("\n[%s:\n%s\n%s] ", hashType, digestToString(recon_digest, numChar), ok);
 

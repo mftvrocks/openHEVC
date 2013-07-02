@@ -191,11 +191,13 @@ int ff_hevc_find_display(HEVCContext *s, AVFrame *out, int flush, int* poc_displ
             HEVCFrame *frame = &sc->DPB[i];
 #ifdef SVC_EXTENSION
             if ((frame->flags & HEVC_FRAME_FLAG_OUTPUT) &&
+
             	 frame->sequence == sc->seq_output && !frame->up_sample_base) {
 #else
                 if ((frame->flags & HEVC_FRAME_FLAG_OUTPUT) &&
                     frame->sequence == sc->seq_output) {
 #endif
+
                 nb_output++;
                 if (frame->poc < min_poc) {
                     min_poc = frame->poc;
@@ -229,7 +231,7 @@ int ff_hevc_find_display(HEVCContext *s, AVFrame *out, int flush, int* poc_displ
         else
             run = 0;
     }
-    
+
     return 0;
 }
 
