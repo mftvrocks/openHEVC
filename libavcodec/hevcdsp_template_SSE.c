@@ -3385,7 +3385,6 @@ static void FUNC(sao_band_filter_wpp_3)( uint8_t *_dst, uint8_t *_src, ptrdiff_t
             src += stride;
         }
 }
-
 static void FUNC(sao_edge_filter_wpp_0)(uint8_t *_dst, uint8_t *_src, ptrdiff_t _stride, struct SAOParams *sao,int *borders, int _width, int _height, int c_idx)
 {
     int x, y;
@@ -3464,6 +3463,9 @@ static void FUNC(sao_edge_filter_wpp_0)(uint8_t *_dst, uint8_t *_src, ptrdiff_t 
             height--;
         }
     }
+
+
+
     {
         int y_stride     = init_y * stride;
         int pos_0_0      = pos[sao_eo_class][0][0];
@@ -3479,6 +3481,7 @@ static void FUNC(sao_edge_filter_wpp_0)(uint8_t *_dst, uint8_t *_src, ptrdiff_t 
         offset2= _mm_set1_epi8(sao_offset_val[edge_idx[2]]);
         offset3= _mm_set1_epi8(sao_offset_val[edge_idx[3]]);
         offset4= _mm_set1_epi8(sao_offset_val[edge_idx[4]]);
+
 
         for (y = init_y; y < height; y++) {
             for (x = init_x; x < width-15; x+=16) {
@@ -3531,8 +3534,15 @@ static void FUNC(sao_edge_filter_wpp_0)(uint8_t *_dst, uint8_t *_src, ptrdiff_t 
             	r2= _mm_add_epi8(r2,r3);
             	r0= _mm_add_epi8(r0,r4);
             	r0= _mm_add_epi8(r0,r2);
-            	r0= _mm_add_epi8(x0,r0);
-
+            	r1= _mm_unpacklo_epi8(_mm_setzero_si128(),r0);
+            	r1= _mm_srai_epi16(r1,8);
+            	r2= _mm_unpackhi_epi8(_mm_setzero_si128(),r0);
+            	r2= _mm_srai_epi16(r2,8);
+            	r3= _mm_unpacklo_epi8(x0,_mm_setzero_si128());
+            	r4= _mm_unpackhi_epi8(x0,_mm_setzero_si128());
+            	r0= _mm_add_epi16(r1,r3);
+            	r1= _mm_add_epi16(r2,r4);
+            	r0= _mm_packus_epi16(r0,r1);
 
             	_mm_storeu_si128((__m128i*)(dst + x + y_stride),r0);
            }
@@ -3584,7 +3594,15 @@ static void FUNC(sao_edge_filter_wpp_0)(uint8_t *_dst, uint8_t *_src, ptrdiff_t 
         	r2= _mm_add_epi8(r2,r3);
         	r0= _mm_add_epi8(r0,r4);
         	r0= _mm_add_epi8(r0,r2);
-        	r0= _mm_add_epi8(x0,r0);
+        	r1= _mm_unpacklo_epi8(_mm_setzero_si128(),r0);
+        	r1= _mm_srai_epi16(r1,8);
+        	r2= _mm_unpackhi_epi8(_mm_setzero_si128(),r0);
+        	r2= _mm_srai_epi16(r2,8);
+        	r3= _mm_unpacklo_epi8(x0,_mm_setzero_si128());
+        	r4= _mm_unpackhi_epi8(x0,_mm_setzero_si128());
+        	r0= _mm_add_epi16(r1,r3);
+        	r1= _mm_add_epi16(r2,r4);
+        	r0= _mm_packus_epi16(r0,r1);
 
 
             for(; x < width; x++)
@@ -4513,12 +4531,12 @@ static void FUNC(put_hevc_epel_pixels)(int16_t *dst, ptrdiff_t dststride,
                 x1= _mm_slli_epi16(x1,14 - BIT_DEPTH);
                 _mm_store_si128((__m128i*)&dst[x], x2);
                 _mm_store_si128((__m128i*)&dst[x+8], x1);
-                
+
             }
             src += srcstride;
             dst += dststride;
         }
-    
+
 }
 
 
@@ -4537,14 +4555,14 @@ static void FUNC(put_hevc_epel_h)(int16_t *dst, ptrdiff_t dststride,
     int8_t filter_3 = filter[3];
     r0= _mm_set_epi8(filter_3,filter_2,filter_1, filter_0,filter_3,filter_2,filter_1, filter_0,filter_3,filter_2,filter_1, filter_0,filter_3,filter_2,filter_1, filter_0);
     bshuffle1=_mm_set_epi8(6,5,4,3,5,4,3,2,4,3,2,1,3,2,1,0);
-    
+
     if(width == 4){
-        
+
         for (y = 0; y < height; y++) {
             /* load data in register     */
             x1= _mm_loadu_si128((__m128i*)&src[-1]);
             x2= _mm_shuffle_epi8(x1,bshuffle1);
-            
+
             /*  PMADDUBSW then PMADDW     */
             x2= _mm_maddubs_epi16(x2,r0);
             x2= _mm_hadd_epi16(x2,_mm_set1_epi16(0));
@@ -4559,11 +4577,11 @@ static void FUNC(put_hevc_epel_h)(int16_t *dst, ptrdiff_t dststride,
         bshuffle2=_mm_set_epi8(10,9,8,7,9,8,7,6,8,7,6,5,7,6,5,4);
         for (y = 0; y < height; y++) {
             for (x = 0; x < width; x+=8) {
-                
+
                 x1= _mm_loadu_si128((__m128i*)&src[x-1]);
                 x2= _mm_shuffle_epi8(x1,bshuffle1);
                 x3= _mm_shuffle_epi8(x1,bshuffle2);
-                
+
                 /*  PMADDUBSW then PMADDW     */
                 x2= _mm_maddubs_epi16(x2,r0);
                 x3= _mm_maddubs_epi16(x3,r0);
@@ -4596,14 +4614,14 @@ static void FUNC(put_hevc_epel_v)(int16_t *dst, ptrdiff_t dststride,
     f3= _mm_set1_epi16(filter_3);
     if(width == 4)
         for (y = 0; y < height; y++)  {
-            
+
             /* check if memory needs to be reloaded */
 
                 x0= _mm_loadu_si128((__m128i*)&src[-srcstride]);
                 x1= _mm_loadu_si128((__m128i*)&src[0]);
                 x2= _mm_loadu_si128((__m128i*)&src[srcstride]);
                 x3= _mm_loadu_si128((__m128i*)&src[2*srcstride]);
-                
+
                 t0 = _mm_unpacklo_epi8(x0,_mm_set1_epi8(0));
                 t1 = _mm_unpacklo_epi8(x1,_mm_set1_epi8(0));
                 t2 = _mm_unpacklo_epi8(x2,_mm_set1_epi8(0));
@@ -4613,18 +4631,18 @@ static void FUNC(put_hevc_epel_v)(int16_t *dst, ptrdiff_t dststride,
             /* multiply by correct value : */
             r0= _mm_mullo_epi16(t0,f0) ;
             r0= _mm_adds_epi16(r0, _mm_mullo_epi16(t1,f1)) ;
-            
+
             r0= _mm_adds_epi16(r0, _mm_mullo_epi16(t2,f2)) ;
-            
+
             r0= _mm_adds_epi16(r0, _mm_mullo_epi16(t3,f3)) ;
             r0= _mm_srli_epi16(r0,BIT_DEPTH - 8);
             /* give results back            */
             _mm_storel_epi64((__m128i*)&dst[0], r0);\
-            
+
             src += srcstride;
             dst += dststride;
         }
-    
+
     else
         for (y = 0; y < height; y++)  {
             for (x = 0; x < width; x+=16)  {
@@ -4634,7 +4652,7 @@ static void FUNC(put_hevc_epel_v)(int16_t *dst, ptrdiff_t dststride,
                     x1= _mm_loadu_si128((__m128i*)&src[x]);
                     x2= _mm_loadu_si128((__m128i*)&src[x+srcstride]);
                     x3= _mm_loadu_si128((__m128i*)&src[x+2*srcstride]);
-                    
+
                     t0 = _mm_unpacklo_epi8(x0,_mm_set1_epi8(0));
                     t1 = _mm_unpacklo_epi8(x1,_mm_set1_epi8(0));
                     t2 = _mm_unpacklo_epi8(x2,_mm_set1_epi8(0));
@@ -4664,7 +4682,7 @@ static void FUNC(put_hevc_epel_v)(int16_t *dst, ptrdiff_t dststride,
             src += srcstride;
             dst += dststride;
         }
-    
+
 }
 
 static void FUNC(put_hevc_epel_hv)(int16_t *dst, ptrdiff_t dststride,
@@ -4692,7 +4710,7 @@ static void FUNC(put_hevc_epel_hv)(int16_t *dst, ptrdiff_t dststride,
     src -= epel_extra_before * srcstride;
     /* horizontal treatment */
     if(width == 4){
-        
+
         for (y = 0; y < height + epel_extra; y+=2) {
             /* load data in register     */
             x1= _mm_loadu_si128((__m128i*)&src[-1]);
@@ -4700,7 +4718,7 @@ static void FUNC(put_hevc_epel_hv)(int16_t *dst, ptrdiff_t dststride,
             x2= _mm_loadu_si128((__m128i*)&src[-1]);
             x1= _mm_shuffle_epi8(x1,bshuffle1);
             x2= _mm_shuffle_epi8(x2,bshuffle1);
-            
+
             /*  PMADDUBSW then PMADDW     */
             x1= _mm_maddubs_epi16(x1,r0);
             x1= _mm_hadd_epi16(x1,_mm_set1_epi16(0));
@@ -4721,11 +4739,11 @@ static void FUNC(put_hevc_epel_hv)(int16_t *dst, ptrdiff_t dststride,
         bshuffle2=_mm_set_epi8(10,9,8,7,9,8,7,6,8,7,6,5,7,6,5,4);
         for (y = 0; y < height + epel_extra; y++) {
             for (x = 0; x < width; x+=8) {
-                
+
                 x1= _mm_loadu_si128((__m128i*)&src[x-1]);
                 x2= _mm_shuffle_epi8(x1,bshuffle1);
                 x3= _mm_shuffle_epi8(x1,bshuffle2);
-                
+
                 /*  PMADDUBSW then PMADDW     */
                 x2= _mm_maddubs_epi16(x2,r0);
                 x3= _mm_maddubs_epi16(x3,r0);
@@ -4739,7 +4757,7 @@ static void FUNC(put_hevc_epel_hv)(int16_t *dst, ptrdiff_t dststride,
     }
     
     tmp = mcbuffer + epel_extra_before * MAX_PB_SIZE;
-    
+
     /* vertical treatment */
     //f0= _mm_loadu_si128((__m128i *)&filter_v);
     f3= _mm_set1_epi16(filter_v[3]);
@@ -4788,7 +4806,7 @@ static void FUNC(put_hevc_epel_hv)(int16_t *dst, ptrdiff_t dststride,
         tmp += MAX_PB_SIZE;
         dst += dststride;
     }
-    
+
 }
 
 
@@ -4863,7 +4881,7 @@ static void FUNC(put_weighted_pred_avg)(uint8_t *_dst, ptrdiff_t _dststride,
             r1= _mm_srai_epi16(r1,shift);
             r0= _mm_packus_epi16(r0,r1);
 
-            _mm_storeu_si128((__m128i*)&dst[x],r0);
+            _mm_storeu_si128((__m128i*)(dst + x),r0);
         }
         dst  += dststride;
         src1 += srcstride;
@@ -4915,7 +4933,7 @@ static void FUNC(weighted_pred)(uint8_t denom, int16_t wlxFlag, int16_t olxFlag,
             x2= _mm_packus_epi32(x2,x3);
             x0= _mm_packus_epi16(x0,x2);
 
-            _mm_storeu_si128((__m128i*)&dst[x],x0);
+            _mm_storeu_si128((__m128i*)(dst+x),x0);
 
         }
         dst  += dststride;
@@ -4940,7 +4958,7 @@ static void FUNC(weighted_pred)(uint8_t denom, int16_t wlxFlag, int16_t olxFlag,
             x2= _mm_packus_epi32(x2,x3);
             x0= _mm_packus_epi16(x0,x2);
 
-            _mm_storeu_si128((__m128i*)&dst[x],x0);
+            _mm_storeu_si128((__m128i*)(dst +x),x0);
 
         }
         dst  += dststride;
@@ -5127,75 +5145,380 @@ static void FUNC(hevc_loop_filter_luma_h)(uint8_t *_pix, ptrdiff_t _xstride, ptr
 }
 
 static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptrdiff_t _ystride,
-                                        int no_p, int no_q, int _beta, int _tc)
-{
-    int d;
-    pixel *pix = (pixel*)_pix;
-    ptrdiff_t xstride = 1;
-    ptrdiff_t ystride = _ystride/sizeof(pixel);
-    __m128i l0, l1, l3, t1, t2;
-    //load line 0
-    l0= _mm_loadl_epi64((__m128i*)(pix - 4));
-    //load line 3
-    l3= _mm_loadl_epi64((__m128i*)(pix - 4 + 3*ystride));
+		int no_p, int no_q, int _beta, int _tc)
+		{
+	int d;
+	pixel *pix = (pixel*)_pix;
+	ptrdiff_t xstride = 1;
+	ptrdiff_t ystride = _ystride/sizeof(pixel);
+	__m128i l0, l1, l3, t1, t2, m0,m1,m2,m3,tcr,fp0,fp1,fp2,fq0,fq1,fq2;
+	uint8_t tab[16];
+	uint8_t tab2[16];
+	uint8_t tab3[16];
+	uint8_t tab4[16];
+	uint8_t tab5[16];
+	uint8_t tab6[16];
+	//load line 0
+	l0= _mm_loadl_epi64((__m128i*)(pix - 4));
+	//printf("l0 values : %d, %d, %d, %d, %d\n",_mm_extract_epi8(l0,1),_mm_extract_epi8(l0,2),_mm_extract_epi8(l0,3),_mm_extract_epi8(l0,4),_mm_extract_epi8(l0,5));
+	//load line 3
+	//printf("manual values : %d,%d,%d,%d,%d\n",TP2,TP1,TP0,TQ0,TQ1);
 
-    l0= _mm_unpacklo_epi64(l0,l3);	//contains line 0 AND line 3
+	l3= _mm_loadl_epi64((__m128i*)(pix - 4 + 3*ystride));
+	//printf("l0 values : %d, %d, %d, %d, %d\n",_mm_extract_epi8(l3,1),_mm_extract_epi8(l3,2),_mm_extract_epi8(l3,3),_mm_extract_epi8(l3,4),_mm_extract_epi8(l3,5));
+	l0= _mm_unpacklo_epi64(l0,l3);	//contains line 0 AND line 3
 
-    l1= _mm_maddubs_epi16(l0,_mm_set_epi8(0,1,-2,1,1,-2,1,0,0,1,-2,1,1,-2,1,0));
+	l1= _mm_maddubs_epi16(l0,_mm_set_epi8(0,1,-2,1,1,-2,1,0,0,1,-2,1,1,-2,1,0));
 
-    l1= _mm_hadd_epi16(l1, _mm_setzero_si128());
-    t1= _mm_abs_epi16(l1);							//contains dp0, dq0, dp3 and dq3;
-    t2= _mm_hadd_epi16(t1, _mm_setzero_si128());	//contains d0 and d3
-
-
-    const int dp0 = _mm_extract_epi16(t1,0);
-    const int dq0 = _mm_extract_epi16(t1,1);
-    const int dp3 = _mm_extract_epi16(t1,2);
-    const int dq3 = _mm_extract_epi16(t1,3);
-    const int d0 = _mm_extract_epi16(t2,0);
-    const int d3 = _mm_extract_epi16(t2,1);
-
-    const int beta = _beta << (BIT_DEPTH - 8);
-    const int tc = _tc << (BIT_DEPTH - 8);
-    if (_mm_extract_epi16(_mm_hadd_epi16(t2, _mm_setzero_si128()),0) < beta) {
-        const int beta_3 = beta >> 3;
-        const int beta_2 = beta >> 2;
-        const int tc25 = ((tc * 5 + 1) >> 1);
-
-        l1= _mm_shuffle_epi8(l0,_mm_set_epi8(-1,-1,12,11,12,15,11,8,-1,-1,4,3,4,7,3,0));
-        l1= _mm_maddubs_epi16(l1,_mm_set_epi8(0, 0,-1,1,-1,1,-1,1,0,0,-1,1,-1,1,-1,1));
-        l1= _mm_abs_epi16(l1);
-        l1= _mm_hadd_epi16(l1,_mm_setzero_si128());
-        l1= _mm_or_si128(l1,_mm_slli_epi16(_mm_slli_si128(t2,8),1));
-
-        l1= _mm_cmplt_epi16(l1,_mm_set_epi16(1,1,beta_2,beta_2,tc25,beta_3,tc25,beta_3));
+	l1= _mm_hadd_epi16(l1, _mm_setzero_si128());
+	t1= _mm_abs_epi16(l1);							//contains dp0, dq0, dp3 and dq3;
+	t2= _mm_hadd_epi16(t1, _mm_setzero_si128());	//contains d0 and d3
 
 
-        if(_mm_test_all_ones(l1)) {
+	const int dp0 = _mm_extract_epi16(t1,0);
+	const int dq0 = _mm_extract_epi16(t1,1);
+	const int dp3 = _mm_extract_epi16(t1,2);
+	const int dq3 = _mm_extract_epi16(t1,3);
+	const int d0 = _mm_extract_epi16(t2,0);
+	const int d3 = _mm_extract_epi16(t2,1);
 
-            // strong filtering
-            const int tc2 = tc << 1;
-            for(d = 0; d < 4; d++) {
-                const int p3 = P3;
-                const int p2 = P2;
-                const int p1 = P1;
-                const int p0 = P0;
-                const int q0 = Q0;
-                const int q1 = Q1;
-                const int q2 = Q2;
-                const int q3 = Q3;
-                if(!no_p) {
-                    P0 = av_clip_c(( p2 + 2*p1 + 2*p0 + 2*q0 + q1 + 4 ) >> 3, p0-tc2, p0+tc2);
-                    P1 = av_clip_c(( p2 + p1 + p0 + q0 + 2 ) >> 2, p1-tc2, p1+tc2);
-                    P2 = av_clip_c(( 2*p3 + 3*p2 + p1 + p0 + q0 + 4 ) >> 3, p2-tc2, p2+tc2);
-                }
-                if(!no_q) {
-                    Q0 = av_clip_c(( p1 + 2*p0 + 2*q0 + 2*q1 + q2 + 4 ) >> 3, q0-tc2, q0+tc2);
-                    Q1 = av_clip_c(( p0 + q0 + q1 + q2 + 2 ) >> 2, q1-tc2, q1+tc2);
-                    Q2 = av_clip_c(( 2*q3 + 3*q2 + q1 + q0 + p0 + 4 ) >> 3, q2-tc2, q2+tc2);
-                }
-                pix += ystride;
+	const int beta = _beta << (BIT_DEPTH - 8);
+	const int tc = _tc << (BIT_DEPTH - 8);
+	if (_mm_extract_epi16(_mm_hadd_epi16(t2, _mm_setzero_si128()),0) < beta) {
+		const int beta_3 = beta >> 3;
+		const int beta_2 = beta >> 2;
+		const int tc25 = ((tc * 5 + 1) >> 1);
+
+		l1= _mm_shuffle_epi8(l0,_mm_set_epi8(-1,-1,12,11,12,15,11,8,-1,-1,4,3,4,7,3,0));
+		l1= _mm_maddubs_epi16(l1,_mm_set_epi8(0, 0,-1,1,-1,1,-1,1,0,0,-1,1,-1,1,-1,1));
+		l1= _mm_abs_epi16(l1);
+		l1= _mm_hadd_epi16(l1,_mm_setzero_si128());
+		l1= _mm_or_si128(l1,_mm_slli_epi16(_mm_slli_si128(t2,8),1));
+
+		l1= _mm_cmplt_epi16(l1,_mm_set_epi16(1,1,beta_2,beta_2,tc25,beta_3,tc25,beta_3));
+
+
+		if(_mm_test_all_ones(l1)) {
+			// strong filtering
+			const int tc2 = tc << 1;
+			tcr= _mm_set1_epi16(tc2);
+			l1= _mm_unpacklo_epi64(_mm_loadl_epi64((__m128i*)(pix - 4 + ystride)),_mm_loadl_epi64((__m128i*)(pix - 4 + 2*ystride)));	//contains lines 1 and 2
+			if(!no_p) {
+				//p0
+				m2= _mm_set_epi8(13,12,11,10,9,-1,-1,-1,-1,-1,-1,5,4,3,2,1);
+				t1= _mm_shuffle_epi8(l0,m2);
+
+				m3= _mm_set_epi8(1,2,2,2,1, 0, 0, 0, 0, 0, 0,1,2,2,2,1);
+				t2= _mm_shuffle_epi8(l1,m2);
+				m0= _mm_maddubs_epi16(t1,m3);
+				m1= _mm_maddubs_epi16(t2,m3);
+
+				m0= _mm_hadd_epi16(m0,m1);
+				m0= _mm_hadd_epi16(m0,_mm_setzero_si128());
+				m0= _mm_adds_epi16(m0,_mm_set1_epi16(4));
+				m0= _mm_srli_epi16(m0,3);		//contains P0 values of lines 0,3,1,2
+				//compare values for clipping;
+				t1= _mm_set_epi8(-1,3,-1,3,-1,3,-1,3,-1,3,-1,3,-1,3,-1,3);
+				m1= _mm_shuffle_epi8(l0,t1);
+				m2= _mm_shuffle_epi8(l1,t1);
+				m1= _mm_unpacklo_epi16(m1,m2);
+				t1= _mm_set_epi8(-1,11,-1,11,-1,11,-1,11,-1,11,-1,11,-1,11,-1,11);
+				m3= _mm_shuffle_epi8(l0,t1);
+				m2= _mm_shuffle_epi8(l1,t1);
+				m3= _mm_unpacklo_epi16(m3,m2);
+
+				m1= _mm_unpacklo_epi16(m1,m3);//contains p0 values of lines 0,3,1,2
+
+				m3= _mm_add_epi16(tcr,m1);
+
+
+				t1= _mm_sub_epi16(m0,m3);
+				t1= _mm_cmpgt_epi16(t1,_mm_setzero_si128());
+				m0= _mm_andnot_si128(t1,m0);
+				m3= _mm_and_si128(t1,m3);
+				m0= _mm_or_si128(m0,m3);
+
+				m3= _mm_subs_epi16(m1,tcr);
+
+
+				t1= _mm_sub_epi16(m0,m3);
+				t1= _mm_cmplt_epi16(t1,_mm_setzero_si128());
+				m0= _mm_andnot_si128(t1,m0);
+				m3= _mm_and_si128(t1,m3);
+				m0= _mm_or_si128(m0,m3); //m0 contains final P0.
+				fp0= _mm_move_epi64(m0);
+
+				//P1
+
+				m2= _mm_set_epi8(-1,9,-1,10,-1,11,-1,12,-1,1,-1,2,-1,3,-1,4); //casts to 16 bit
+				t1= _mm_shuffle_epi8(l0,m2);
+				t2= _mm_shuffle_epi8(l1,m2);
+				//	all values are in register, no coefficients, so only 2 HADD necessary
+				t1= _mm_hadd_epi16(t1,t2);
+				t1= _mm_hadd_epi16(t1,_mm_setzero_si128());
+				t1= _mm_add_epi16(t1, _mm_set1_epi16(2));
+				m0= _mm_srli_epi16(t1,2);		//contains P1 values of lines 0,3,1,2
+
+				//compare values for clipping;
+				t1= _mm_set_epi8(-1,2,-1,2,-1,2,-1,2,-1,2,-1,2,-1,2,-1,2);
+				m1= _mm_shuffle_epi8(l0,t1);
+				m2= _mm_shuffle_epi8(l1,t1);
+				m1= _mm_unpacklo_epi16(m1,m2);
+				t1= _mm_set_epi8(-1,10,-1,10,-1,10,-1,10,-1,10,-1,10,-1,10,-1,10);
+				m3= _mm_shuffle_epi8(l0,t1);
+				m2= _mm_shuffle_epi8(l1,t1);
+				m3= _mm_unpacklo_epi16(m3,m2);
+
+				m1= _mm_unpacklo_epi16(m1,m3);//contains p1 values of lines 0,3,1,2
+
+				m3= _mm_add_epi16(tcr,m1);
+
+
+				t1= _mm_sub_epi16(m0,m3);
+				t1= _mm_cmpgt_epi16(t1,_mm_setzero_si128());
+				m0= _mm_andnot_si128(t1,m0);
+				m3= _mm_and_si128(t1,m3);
+				m0= _mm_or_si128(m0,m3);
+
+
+				m3= _mm_subs_epi16(m1,tcr);
+
+
+				t1= _mm_sub_epi16(m0,m3);
+				t1= _mm_cmplt_epi16(t1,_mm_setzero_si128());
+				m0= _mm_andnot_si128(t1,m0);
+				m3= _mm_and_si128(t1,m3);
+				m0= _mm_or_si128(m0,m3); //m0 contains final P1.
+				fp1= _mm_move_epi64(m0);
+
+				//P2
+
+				m2= _mm_set_epi8(12,11,10,9,8,-1,-1,-1,-1,-1,-1,4,3,2,1,0);
+				t1= _mm_shuffle_epi8(l0,m2);
+
+				m3= _mm_set_epi8(1,1,1,3,2, 0, 0, 0, 0, 0, 0,1,1,1,3,2);
+				t2= _mm_shuffle_epi8(l1,m2);
+				m0= _mm_maddubs_epi16(t1,m3);
+				m1= _mm_maddubs_epi16(t2,m3);
+
+				m0= _mm_hadd_epi16(m0,m1);
+				m0= _mm_hadd_epi16(m0,_mm_setzero_si128());
+				m0= _mm_adds_epi16(m0,_mm_set1_epi16(4));
+				m0= _mm_srli_epi16(m0,3);		//contains P0 values of lines 0,3,1,2
+				//compare values for clipping;
+				t1= _mm_set_epi8(-1,1,-1,1,-1,1,-1,1,-1,1,-1,1,-1,1,-1,1);
+				m1= _mm_shuffle_epi8(l0,t1);
+				m2= _mm_shuffle_epi8(l1,t1);
+				m1= _mm_unpacklo_epi16(m1,m2);
+				t1= _mm_set_epi8(-1,9,-1,9,-1,9,-1,9,-1,9,-1,9,-1,9,-1,9);
+				m3= _mm_shuffle_epi8(l0,t1);
+				m2= _mm_shuffle_epi8(l1,t1);
+				m3= _mm_unpacklo_epi16(m3,m2);
+
+				m1= _mm_unpacklo_epi16(m1,m3);//contains p0 values of lines 0,3,1,2
+
+				m3= _mm_add_epi16(tcr,m1);
+
+
+				t1= _mm_sub_epi16(m0,m3);
+				t1= _mm_cmpgt_epi16(t1,_mm_setzero_si128());
+				m0= _mm_andnot_si128(t1,m0);
+				m3= _mm_and_si128(t1,m3);
+				m0= _mm_or_si128(m0,m3);
+
+				m3= _mm_subs_epi16(m1,tcr);
+
+
+				t1= _mm_sub_epi16(m0,m3);
+				t1= _mm_cmplt_epi16(t1,_mm_setzero_si128());
+				m0= _mm_andnot_si128(t1,m0);
+				m3= _mm_and_si128(t1,m3);
+				m0= _mm_or_si128(m0,m3); //m0 contains final P2.
+				fp2= _mm_move_epi64(m0);
+
+				fp0= _mm_unpacklo_epi16(fp2,fp0);
+				fp1= _mm_unpacklo_epi16(fp1,_mm_setzero_si128());
+				fp2= _mm_unpacklo_epi16(fp0,fp1); //P2,P1,P0,0 of lines 0 and 3
+				fp0= _mm_unpackhi_epi16(fp0,fp1); //p2, P1, P0, 0 of lines 1 and 2;
+				fp2= _mm_packus_epi16(fp2,fp0); //all values back in one register in 8 bit format.
+				fp2= _mm_shuffle_epi32(fp2,_MM_SHUFFLE(1,3,2,0)); // all in order : line 0,1,2,3
+				t1= _mm_set_epi8(0,0,0,0,0,0,0,0,0,0,0,0,0,-1,-1,-1);
+				_mm_maskmoveu_si128(fp2,t1,(char*)(pix - 3)); //line 0
+				fp2= _mm_srli_si128(fp2,4);
+				_mm_maskmoveu_si128(fp2,t1,(char*)(pix - 3 + ystride)); //line 1
+				fp2= _mm_srli_si128(fp2,4);
+				_mm_maskmoveu_si128(fp2,t1,(char*)(pix - 3 + 2*ystride)); //line 2
+				fp2= _mm_srli_si128(fp2,4);
+				_mm_maskmoveu_si128(fp2,t1,(char*)(pix - 3 + 3*ystride)); //line 3
+
+
+
             }
+			if(!no_q) {
+				//Q0
+				m2= _mm_set_epi8(14,13,12,11,10,-1,-1,-1,-1,-1,-1,6,5,4,3,2);
+				t1= _mm_shuffle_epi8(l0,m2);
+
+				m3= _mm_set_epi8(1,2,2,2,1, 0, 0, 0, 0, 0, 0,1,2,2,2,1);
+				t2= _mm_shuffle_epi8(l1,m2);
+				m0= _mm_maddubs_epi16(t1,m3);
+				m1= _mm_maddubs_epi16(t2,m3);
+
+				m0= _mm_hadd_epi16(m0,m1);
+				m0= _mm_hadd_epi16(m0,_mm_setzero_si128());
+				m0= _mm_adds_epi16(m0,_mm_set1_epi16(4));
+				m0= _mm_srli_epi16(m0,3);		//contains P0 values of lines 0,3,1,2
+				//compare values for clipping;
+				t1= _mm_set_epi8(-1,4,-1,4,-1,4,-1,4,-1,4,-1,4,-1,4,-1,4);
+				m1= _mm_shuffle_epi8(l0,t1);
+				m2= _mm_shuffle_epi8(l1,t1);
+				m1= _mm_unpacklo_epi16(m1,m2);
+				t1= _mm_set_epi8(-1,12,-1,12,-1,12,-1,12,-1,12,-1,12,-1,12,-1,12);
+				m3= _mm_shuffle_epi8(l0,t1);
+				m2= _mm_shuffle_epi8(l1,t1);
+				m3= _mm_unpacklo_epi16(m3,m2);
+
+				m1= _mm_unpacklo_epi16(m1,m3);//contains p0 values of lines 0,3,1,2
+
+				m3= _mm_add_epi16(tcr,m1);
+
+
+				t1= _mm_sub_epi16(m0,m3);
+				t1= _mm_cmpgt_epi16(t1,_mm_setzero_si128());
+				m0= _mm_andnot_si128(t1,m0);
+				m3= _mm_and_si128(t1,m3);
+				m0= _mm_or_si128(m0,m3);
+
+
+				m3= _mm_subs_epi16(m1,tcr);
+
+
+				t1= _mm_sub_epi16(m0,m3);
+				t1= _mm_cmplt_epi16(t1,_mm_setzero_si128());
+				m0= _mm_andnot_si128(t1,m0);
+				m3= _mm_and_si128(t1,m3);
+				m0= _mm_or_si128(m0,m3); //m0 contains final P0.
+
+            	pix[0]= _mm_extract_epi16(m0,0);
+
+            	pix[ystride]= _mm_extract_epi16(m0,2);
+
+            	pix[2*ystride]= _mm_extract_epi16(m0,3);
+
+            	pix[3*ystride]= _mm_extract_epi16(m0,1);
+
+
+				//Q1
+
+				m2= _mm_set_epi8(-1,11,-1,12,-1,13,-1,14,-1,3,-1,4,-1,5,-1,6); //casts to 16 bit
+				t1= _mm_shuffle_epi8(l0,m2);
+				t2= _mm_shuffle_epi8(l1,m2);
+				//	all values are in register, no coefficients, so only 2 HADD necessary
+				t1= _mm_hadd_epi16(t1,t2);
+				t1= _mm_hadd_epi16(t1,_mm_setzero_si128());
+				t1= _mm_add_epi16(t1, _mm_set1_epi16(2));
+				m0= _mm_srli_epi16(t1,2);		//contains P0 values of lines 0,3,1,2
+
+				//compare values for clipping;
+				t1= _mm_set_epi8(-1,5,-1,5,-1,5,-1,5,-1,5,-1,5,-1,5,-1,5);
+				m1= _mm_shuffle_epi8(l0,t1);
+				m2= _mm_shuffle_epi8(l1,t1);
+
+				m1= _mm_unpacklo_epi16(m1,m2);
+				t1= _mm_set_epi8(-1,13,-1,13,-1,13,-1,13,-1,13,-1,13,-1,13,-1,13);
+				m3= _mm_shuffle_epi8(l0,t1);
+				m2= _mm_shuffle_epi8(l1,t1);
+
+				m3= _mm_unpacklo_epi16(m3,m2);
+
+				m1= _mm_unpacklo_epi16(m1,m3);//contains p1 values of lines 0,3,1,2
+
+				m3= _mm_add_epi16(tcr,m1);
+
+
+				t1= _mm_sub_epi16(m0,m3);
+				t1= _mm_cmpgt_epi16(t1,_mm_setzero_si128());
+				m0= _mm_andnot_si128(t1,m0);
+				m3= _mm_and_si128(t1,m3);
+				m0= _mm_or_si128(m0,m3);
+
+
+				m3= _mm_subs_epi16(m1,tcr);
+
+
+				t1= _mm_sub_epi16(m0,m3);
+				t1= _mm_cmplt_epi16(t1,_mm_setzero_si128());
+				m0= _mm_andnot_si128(t1,m0);
+				m3= _mm_and_si128(t1,m3);
+				m0= _mm_or_si128(m0,m3); //m0 contains final P0.
+
+            	            	pix[1]= _mm_extract_epi16(m0,0);
+
+            	            	pix[1+ystride]= _mm_extract_epi16(m0,2);
+
+            	            	pix[1+2*ystride]= _mm_extract_epi16(m0,3);
+
+            	            	pix[1+3*ystride]= _mm_extract_epi16(m0,1);
+
+				//Q2
+
+				m2= _mm_set_epi8(11,12,13,14,15,-1,-1,-1,-1,-1,-1,3,4,5,6,7);
+				t1= _mm_shuffle_epi8(l0,m2);
+
+				m3= _mm_set_epi8(1,1,1,3,2, 0, 0, 0, 0, 0, 0,1,1,1,3,2);
+				t2= _mm_shuffle_epi8(l1,m2);
+
+				m0= _mm_maddubs_epi16(t1,m3);
+				m1= _mm_maddubs_epi16(t2,m3);
+
+				m0= _mm_hadd_epi16(m0,m1);
+				m0= _mm_hadd_epi16(m0,_mm_setzero_si128());
+				m0= _mm_adds_epi16(m0,_mm_set1_epi16(4));
+				m0= _mm_srli_epi16(m0,3);		//contains P0 values of lines 0,3,1,2
+				//compare values for clipping;
+				t1= _mm_set_epi8(-1,6,-1,6,-1,6,-1,6,-1,6,-1,6,-1,6,-1,6);
+				m1= _mm_shuffle_epi8(l0,t1);
+				m2= _mm_shuffle_epi8(l1,t1);
+
+				t1= _mm_set_epi8(-1,14,-1,14,-1,14,-1,14,-1,14,-1,14,-1,14,-1,14);
+				m1= _mm_unpacklo_epi16(m1,m2);
+				m3= _mm_shuffle_epi8(l0,t1);
+				m2= _mm_shuffle_epi8(l1,t1);
+
+				m3= _mm_unpacklo_epi16(m3,m2);
+
+				m1= _mm_unpacklo_epi16(m1,m3);//contains p0 values of lines 0,3,1,2
+
+				m3= _mm_add_epi16(tcr,m1);
+
+
+				t1= _mm_sub_epi16(m0,m3);
+				t1= _mm_cmpgt_epi16(t1,_mm_setzero_si128());
+				m0= _mm_andnot_si128(t1,m0);
+				m3= _mm_and_si128(t1,m3);
+				m0= _mm_or_si128(m0,m3);
+
+
+				m3= _mm_subs_epi16(m1,tcr);
+
+
+				t1= _mm_sub_epi16(m0,m3);
+				t1= _mm_cmplt_epi16(t1,_mm_setzero_si128());
+				m0= _mm_andnot_si128(t1,m0);
+				m3= _mm_and_si128(t1,m3);
+				m0= _mm_or_si128(m0,m3); //m0 contains final P0.
+
+            	pix[2]= _mm_extract_epi16(m0,0);
+
+            	pix[2+ystride]= _mm_extract_epi16(m0,2);
+
+            	pix[2+2*ystride]= _mm_extract_epi16(m0,3);
+
+            	pix[2+3*ystride]= _mm_extract_epi16(m0,1);
+
+			}
+
+
         } else { // normal filtering
 
             int nd_p = 1;
@@ -5234,6 +5557,7 @@ static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptr
         }
     }
 }
+
 
 static void FUNC(hevc_loop_filter_chroma)(uint8_t *_pix, ptrdiff_t _xstride, ptrdiff_t _ystride, int no_p, int no_q, int _tc)
 {
