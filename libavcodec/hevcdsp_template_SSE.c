@@ -5151,7 +5151,7 @@ static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptr
 	pixel *pix = (pixel*)_pix;
 	ptrdiff_t xstride = 1;
 	ptrdiff_t ystride = _ystride/sizeof(pixel);
-	__m128i l0, l1, l3, t1, t2, m0,m1,m2,m3,tcr,fp0,fp1,fp2,fq0,fq1,fq2;
+	__m128i l0, l1, l3, t1, t2, m0,m1,m2,m3,tcr,fp0,fp1,fp2;
 	uint8_t tab[16];
 	uint8_t tab2[16];
 	uint8_t tab3[16];
@@ -5160,12 +5160,9 @@ static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptr
 	uint8_t tab6[16];
 	//load line 0
 	l0= _mm_loadl_epi64((__m128i*)(pix - 4));
-	//printf("l0 values : %d, %d, %d, %d, %d\n",_mm_extract_epi8(l0,1),_mm_extract_epi8(l0,2),_mm_extract_epi8(l0,3),_mm_extract_epi8(l0,4),_mm_extract_epi8(l0,5));
 	//load line 3
-	//printf("manual values : %d,%d,%d,%d,%d\n",TP2,TP1,TP0,TQ0,TQ1);
 
 	l3= _mm_loadl_epi64((__m128i*)(pix - 4 + 3*ystride));
-	//printf("l0 values : %d, %d, %d, %d, %d\n",_mm_extract_epi8(l3,1),_mm_extract_epi8(l3,2),_mm_extract_epi8(l3,3),_mm_extract_epi8(l3,4),_mm_extract_epi8(l3,5));
 	l0= _mm_unpacklo_epi64(l0,l3);	//contains line 0 AND line 3
 
 	l1= _mm_maddubs_epi16(l0,_mm_set_epi8(0,1,-2,1,1,-2,1,0,0,1,-2,1,1,-2,1,0));
@@ -5203,6 +5200,7 @@ static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptr
 			const int tc2 = tc << 1;
 			tcr= _mm_set1_epi16(tc2);
 			l1= _mm_unpacklo_epi64(_mm_loadl_epi64((__m128i*)(pix - 4 + ystride)),_mm_loadl_epi64((__m128i*)(pix - 4 + 2*ystride)));	//contains lines 1 and 2
+
 			if(!no_p) {
 				//p0
 				m2= _mm_set_epi8(13,12,11,10,9,-1,-1,-1,-1,-1,-1,5,4,3,2,1);
@@ -5245,8 +5243,7 @@ static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptr
 				t1= _mm_cmplt_epi16(t1,_mm_setzero_si128());
 				m0= _mm_andnot_si128(t1,m0);
 				m3= _mm_and_si128(t1,m3);
-				m0= _mm_or_si128(m0,m3); //m0 contains final P0.
-				fp0= _mm_move_epi64(m0);
+				fp0= _mm_or_si128(m0,m3);
 
 				//P1
 
@@ -5288,8 +5285,8 @@ static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptr
 				t1= _mm_cmplt_epi16(t1,_mm_setzero_si128());
 				m0= _mm_andnot_si128(t1,m0);
 				m3= _mm_and_si128(t1,m3);
-				m0= _mm_or_si128(m0,m3); //m0 contains final P1.
-				fp1= _mm_move_epi64(m0);
+				fp1= _mm_or_si128(m0,m3);
+
 
 				//P2
 
@@ -5333,8 +5330,8 @@ static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptr
 				t1= _mm_cmplt_epi16(t1,_mm_setzero_si128());
 				m0= _mm_andnot_si128(t1,m0);
 				m3= _mm_and_si128(t1,m3);
-				m0= _mm_or_si128(m0,m3); //m0 contains final P2.
-				fp2= _mm_move_epi64(m0);
+				fp2= _mm_or_si128(m0,m3); //m0 contains final P2.
+
 
 				fp0= _mm_unpacklo_epi16(fp2,fp0);
 				fp1= _mm_unpacklo_epi16(fp1,_mm_setzero_si128());
@@ -5350,9 +5347,6 @@ static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptr
 				_mm_maskmoveu_si128(fp2,t1,(char*)(pix - 3 + 2*ystride)); //line 2
 				fp2= _mm_srli_si128(fp2,4);
 				_mm_maskmoveu_si128(fp2,t1,(char*)(pix - 3 + 3*ystride)); //line 3
-
-
-
             }
 			if(!no_q) {
 				//Q0
@@ -5397,15 +5391,9 @@ static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptr
 				t1= _mm_cmplt_epi16(t1,_mm_setzero_si128());
 				m0= _mm_andnot_si128(t1,m0);
 				m3= _mm_and_si128(t1,m3);
-				m0= _mm_or_si128(m0,m3); //m0 contains final P0.
+				fp2= _mm_or_si128(m0,m3);
 
-            	pix[0]= _mm_extract_epi16(m0,0);
 
-            	pix[ystride]= _mm_extract_epi16(m0,2);
-
-            	pix[2*ystride]= _mm_extract_epi16(m0,3);
-
-            	pix[3*ystride]= _mm_extract_epi16(m0,1);
 
 
 				//Q1
@@ -5450,15 +5438,7 @@ static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptr
 				t1= _mm_cmplt_epi16(t1,_mm_setzero_si128());
 				m0= _mm_andnot_si128(t1,m0);
 				m3= _mm_and_si128(t1,m3);
-				m0= _mm_or_si128(m0,m3); //m0 contains final P0.
-
-            	            	pix[1]= _mm_extract_epi16(m0,0);
-
-            	            	pix[1+ystride]= _mm_extract_epi16(m0,2);
-
-            	            	pix[1+2*ystride]= _mm_extract_epi16(m0,3);
-
-            	            	pix[1+3*ystride]= _mm_extract_epi16(m0,1);
+				fp1= _mm_or_si128(m0,m3);
 
 				//Q2
 
@@ -5506,15 +5486,23 @@ static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptr
 				t1= _mm_cmplt_epi16(t1,_mm_setzero_si128());
 				m0= _mm_andnot_si128(t1,m0);
 				m3= _mm_and_si128(t1,m3);
-				m0= _mm_or_si128(m0,m3); //m0 contains final P0.
+				fp0= _mm_or_si128(m0,m3);
 
-            	pix[2]= _mm_extract_epi16(m0,0);
 
-            	pix[2+ystride]= _mm_extract_epi16(m0,2);
-
-            	pix[2+2*ystride]= _mm_extract_epi16(m0,3);
-
-            	pix[2+3*ystride]= _mm_extract_epi16(m0,1);
+				fp0= _mm_unpacklo_epi16(fp2,fp0);
+				fp1= _mm_unpacklo_epi16(fp1,_mm_setzero_si128());
+				fp2= _mm_unpacklo_epi16(fp0,fp1);
+				fp0= _mm_unpackhi_epi16(fp0,fp1);
+				fp2= _mm_packus_epi16(fp2,fp0); //all values back in one register in 8 bit format.
+				fp2= _mm_shuffle_epi32(fp2,_MM_SHUFFLE(1,3,2,0)); // all in order : line 0,1,2,3
+				t1= _mm_set_epi8(0,0,0,0,0,0,0,0,0,0,0,0,0,-1,-1,-1);
+				_mm_maskmoveu_si128(fp2,t1,(char*)(pix)); //line 0
+				fp2= _mm_srli_si128(fp2,4);
+				_mm_maskmoveu_si128(fp2,t1,(char*)(pix+ ystride)); //line 1
+				fp2= _mm_srli_si128(fp2,4);
+				_mm_maskmoveu_si128(fp2,t1,(char*)(pix+ 2*ystride)); //line 2
+				fp2= _mm_srli_si128(fp2,4);
+				_mm_maskmoveu_si128(fp2,t1,(char*)(pix+ 3*ystride)); //line 3
 
 			}
 
