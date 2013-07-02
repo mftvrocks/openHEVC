@@ -61,7 +61,8 @@ static int find_upsample_ref_idx(HEVCContext *s, int poc)
 
 
 void ff_unref_upsampled_frame(HEVCSharedContext *s){
-    for (int i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++) {
+	int i;
+    for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++) {
         HEVCFrame *ref = &s->DPB[i];
         if(ref->frame->buf[0] && ref->poc == s->poc && ref->up_sample_base){
             av_frame_unref(ref->frame);
@@ -256,10 +257,7 @@ static void init_upsampled_mv_fields(HEVCContext *s) {
     int i, list;
     int pic_width_in_min_pu = s->HEVCsc->sps->pic_width_in_luma_samples >> s->HEVCsc->sps->log2_min_pu_size;
     int pic_height_in_min_pu = s->HEVCsc->sps->pic_height_in_luma_samples >> s->HEVCsc->sps->log2_min_pu_size;
-  //  int indexEL =  ;
- //   int indexBL = ;
     HEVCFrame *refEL = &s->HEVCsc->DPB[find_upsample_ref_idx( s,  s->HEVCsc->poc)];
-  //  HEVCFrame *refBL = &((HEVCContext*)s->avctx->priv_data)->HEVCsc->DPB[find_ref_idx(s->avctx->priv_data, s->HEVCsc->poc)];
     RefPicList   *refPocList = s->HEVCsc->sh.refPocList;
     refPocList[ST_CURR_BEF].numPic = 0;
     refPocList[ST_CURR_AFT].numPic = 0;
@@ -267,7 +265,7 @@ static void init_upsampled_mv_fields(HEVCContext *s) {
     
     for(i = 0; i < pic_width_in_min_pu  * pic_height_in_min_pu; i++) {
         refEL->tab_mvf[i].is_intra = 1;
-        for(int list = 0; list < 2; list++){
+        for(list = 0; list < 2; list++){
             refEL->tab_mvf[i].mv[list].x = 0;
             refEL->tab_mvf[i].mv[list].y = 0;
             refEL->tab_mvf[i].pred_flag[list] = 0;
@@ -277,7 +275,7 @@ static void init_upsampled_mv_fields(HEVCContext *s) {
 }
 
 static void scale_upsampled_mv_field(HEVCContext *s) {
-    int xEL, yEL, xBL, yBL, list, i;
+    int xEL, yEL, xBL, yBL, list, i, j;
     HEVCFrame  *refBL, *refEL;
     HEVCSharedContext *sc = s->HEVCsc;
     int pic_width_in_min_pu = sc->sps->pic_width_in_luma_samples>>sc->sps->log2_min_pu_size;
@@ -327,15 +325,15 @@ static void scale_upsampled_mv_field(HEVCContext *s) {
                     refEL->tab_mvf[(yELIndex*pic_width_in_min_pu)+xELIndex].pred_flag[list] = refBL->tab_mvf[yBL*pic_width_in_min_puBL+xBL].pred_flag[list];
                 }
             }
-            for(int e =0; e < 4; e++)
-            for(int k =0; k < 4; k++)   {
-               if(e || k) {
-                   refEL->tab_mvf[((yELIndex+e) *pic_width_in_min_pu)+xELIndex+k].is_intra = refEL->tab_mvf[yELIndex*pic_width_in_min_pu+xELIndex].is_intra;
-                   for(int list=0; list < 2; list++) {
-                        refEL->tab_mvf[((yELIndex+e) *pic_width_in_min_pu)+xELIndex+k].mv[list].x  = refEL->tab_mvf[yELIndex*pic_width_in_min_pu+xELIndex].mv[list].x;
-                        refEL->tab_mvf[((yELIndex+e) *pic_width_in_min_pu)+xELIndex+k].mv[list].y = refEL->tab_mvf[yELIndex*pic_width_in_min_pu+xELIndex].mv[list].y;
-                        refEL->tab_mvf[((yELIndex+e) *pic_width_in_min_pu)+xELIndex+k].ref_idx[list] = refEL->tab_mvf[yELIndex*pic_width_in_min_pu+xELIndex].ref_idx[list];
-                        refEL->tab_mvf[((yELIndex+e) *pic_width_in_min_pu)+xELIndex+k].pred_flag[list] = refEL->tab_mvf[yELIndex*pic_width_in_min_pu+xELIndex].pred_flag[list];
+            for(i =0; i < 4; i++)
+            for(j =0; j < 4; j++)   {
+               if(i || j) {
+                   refEL->tab_mvf[((yELIndex+i) *pic_width_in_min_pu)+xELIndex+j].is_intra = refEL->tab_mvf[yELIndex*pic_width_in_min_pu+xELIndex].is_intra;
+                   for(list=0; list < 2; list++) {
+                        refEL->tab_mvf[((yELIndex+i) *pic_width_in_min_pu)+xELIndex+j].mv[list].x  = refEL->tab_mvf[yELIndex*pic_width_in_min_pu+xELIndex].mv[list].x;
+                        refEL->tab_mvf[((yELIndex+i) *pic_width_in_min_pu)+xELIndex+j].mv[list].y = refEL->tab_mvf[yELIndex*pic_width_in_min_pu+xELIndex].mv[list].y;
+                        refEL->tab_mvf[((yELIndex+i) *pic_width_in_min_pu)+xELIndex+j].ref_idx[list] = refEL->tab_mvf[yELIndex*pic_width_in_min_pu+xELIndex].ref_idx[list];
+                        refEL->tab_mvf[((yELIndex+i) *pic_width_in_min_pu)+xELIndex+j].pred_flag[list] = refEL->tab_mvf[yELIndex*pic_width_in_min_pu+xELIndex].pred_flag[list];
                     }
                 }
             }

@@ -5345,7 +5345,7 @@ static void FUNC(hevc_loop_filter_chroma)(uint8_t *_pix, ptrdiff_t _xstride, ptr
 
 static void FUNC(upsample_base_layer_frame)(AVFrame *FrameEL, AVFrame *FrameBL, short *Buffer[3], const int32_t enabled_up_sample_filter_luma[16][8], const int32_t enabled_up_sample_filter_chroma[16][4], struct HEVCWindow *Enhscal)
 {
-    int i,j;
+    int i,j, k;
 //    printf("Start upsampling \n");
 #if SCALED_REF_LAYER_OFFSETS
     int widthBL =  FrameBL->width;
@@ -5585,20 +5585,20 @@ static void FUNC(upsample_base_layer_frame)(AVFrame *FrameEL, AVFrame *FrameBL, 
                         
                         if(refPos < 0) {
                           //  memset(buffer1, srcY1[-refPos], -refPos);
-                            for(int k= 0; k<-refPos ; k++)
+                            for(k= 0; k<-refPos ; k++)
                                 buffer1[k] = srcY1[-refPos*widthEL]; //srcY1[(-refPos+k)*strideEL];
-                            for(int k= 0; k<8+refPos ; k++)
+                            for(k= 0; k<8+refPos ; k++)
                                 buffer1[-refPos+k] = srcY1[(-refPos+k)*widthEL];
                         } else if(refPos+8 > heightEL ) {
                             
-                            for(int k= 0; heightEL-refPos ; k++)
+                            for(k= 0; heightEL-refPos ; k++)
                                 buffer1[k] = srcY1[k*widthEL];
-                            for(int k= 0; k<8-(heightEL-refPos) ; k++)
+                            for(k= 0; k<8-(heightEL-refPos) ; k++)
                                 buffer1[heightEL-refPos+k] = srcY1[(heightEL-refPos-1)*widthEL];
                             //memcpy(buffer, srcY1, widthBL-refPos);
                            // memset(buffer+(widthBL-refPos), srcY1[widthBL-refPos-1], 8-(widthBL-refPos));
                         } else {
-                            for(int k= 0; k<8 ; k++)
+                            for(k= 0; k<8 ; k++)
                                 buffer1[k] = srcY1[k*widthEL];
      //                       memcpy(buffer, srcY1, 8);
                         }
@@ -5819,28 +5819,28 @@ static void FUNC(upsample_base_layer_frame)(AVFrame *FrameEL, AVFrame *FrameBL, 
                         if(refPos < 0) {
                               //   printf("refPos+4 %d heightEL %d \n", refPos, heightEL);
                             //memset(buffer, srcY1[-refPos], -refPos);
-                            for(int k= 0; k<-refPos ; k++){
+                            for(k= 0; k<-refPos ; k++){
                                 buffer1[k] = srcU1[(-refPos)*widthEL];
                                 buffer1[k+4] = srcV1[(-refPos)*widthEL];
                             }
-                            for(int k= 0; k<4+refPos ; k++){
+                            for(k= 0; k<4+refPos ; k++){
                                 buffer1[-refPos+k] = srcU1[(-refPos+k)*widthEL];
                                 buffer1[-refPos+k+4] = srcV1[(-refPos+k)*widthEL];
                             }
                         } else if(refPos+4 > heightBL ) {
                       //      printf("refPos+4 %d  heightEL %d \n", refPos+4, heightEL);
-                            for(int k= 0; k< heightBL-refPos ; k++) {
+                            for(k= 0; k< heightBL-refPos ; k++) {
                                 buffer1[k] = srcU1[k*widthEL];
                                 buffer1[k+4] = srcV1[k*widthEL];
                             }
-                            for(int k= 0; k<4-(heightBL-refPos) ; k++) {
+                            for(k= 0; k<4-(heightBL-refPos) ; k++) {
                                 buffer1[heightBL-refPos+k] = srcU1[(heightBL-refPos-1)*widthEL];
                                 buffer1[heightBL-refPos+k+4] = srcV1[(heightBL-refPos-1)*widthEL];
                             }
                             //memcpy(buffer, srcY1, widthBL-refPos);
                             // memset(buffer+(widthBL-refPos), srcY1[widthBL-refPos-1], 8-(widthBL-refPos));
                         } else {
-                            for(int k= 0; k<4 ; k++) {
+                            for(k= 0; k<4 ; k++) {
                                 buffer1[k] = srcU1[k*widthEL];
                                 buffer1[k+4] = srcV1[k*widthEL];
                             }
