@@ -300,10 +300,14 @@ static void scale_upsampled_mv_field(HEVCContext *s) {
     for(xEL=0; xEL < sc->sps->pic_width_in_luma_samples ; xEL+=16) {
         int xELIndex = xEL>>2;
         int yELIndex = yEL>>2;
-        xBL = (((xEL+8) - sc->sps->pic_conf_win.left_offset)*sc->sh.ScalingPosition[sc->layer_id][0] + (1<<15)) >> 16;
-        yBL = (((yEL+8) - sc->sps->pic_conf_win.top_offset )*sc->sh.ScalingPosition[sc->layer_id][1] + (1<<15)) >> 16;
         
-   
+        int xELtmp = av_clip_c(xEL+8, 0, sc->sps->pic_width_in_luma_samples -1);
+        int yELtmp = av_clip_c(yEL+8, 0, sc->sps->pic_height_in_luma_samples -1);
+
+        xBL = (((xELtmp) - sc->sps->pic_conf_win.left_offset)*sc->sh.ScalingPosition[sc->layer_id][0] + (1<<15)) >> 16;
+        yBL = (((yELtmp) - sc->sps->pic_conf_win.top_offset )*sc->sh.ScalingPosition[sc->layer_id][1] + (1<<15)) >> 16;
+
+       // printf("xBL %d yBL %d xEL %d yEL %d topStartL %d g_posScalingFactor[m_layerId][1] %d uiPelY %d \n",xBL, yBL, xELtmp, yELtmp,  sc->sps->pic_conf_win.top_offset, sc->sh.ScalingPosition[sc->layer_id][1], yEL+8);
         xBL = (xBL >>=4)<<2; /*xBL & 0xFFFFFFF0*/
         yBL = (yBL >>=4)<<2;  /*yBL & 0xFFFFFFF0*/
              if(!refBL->tab_mvf[(yBL*pic_width_in_min_puBL)+xBL].is_intra) {
@@ -339,6 +343,7 @@ static void scale_upsampled_mv_field(HEVCContext *s) {
             }
         }
     }
+   // exit(-1);
 }
 #endif
 static void set_ref_pic_list(HEVCContext *s)

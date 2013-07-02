@@ -91,8 +91,8 @@ static int pic_arrays_init(HEVCContext *s)
     int ctb_count = sc->sps->pic_width_in_ctbs * sc->sps->pic_height_in_ctbs;
     int pic_width_in_min_pu = s->HEVCsc->sps->pic_width_in_luma_samples >> s->HEVCsc->sps->log2_min_pu_size;
     int pic_height_in_min_pu = s->HEVCsc->sps->pic_height_in_luma_samples >> s->HEVCsc->sps->log2_min_pu_size;
-    
- 
+
+
 
     sc->bs_width = sc->sps->pic_width_in_luma_samples >> 3;
     sc->bs_height = sc->sps->pic_height_in_luma_samples >> 3;
@@ -147,7 +147,6 @@ static int pic_arrays_init(HEVCContext *s)
         sc->buffer_frame[0] = av_malloc(pic_size*sizeof(short));
         sc->buffer_frame[1] = av_malloc((pic_size>>2)*sizeof(short));
         sc->buffer_frame[2] = av_malloc((pic_size>>2)*sizeof(short));
-  
     }
 #endif
     return 0;
@@ -1999,8 +1998,8 @@ static int hls_decode_entry(AVCodecContext *avctxt, void *isFilterThread)
     sc = s->HEVCsc;
 #else
     HEVCSharedContext *sc = s->HEVCsc;
-
 #endif
+
     int ctb_size    = 1 << sc->sps->log2_ctb_size;
    
     int more_data   = 1;
@@ -2009,7 +2008,7 @@ static int hls_decode_entry(AVCodecContext *avctxt, void *isFilterThread)
     int ctb_addr_ts = sc->pps->ctb_addr_rs_to_ts[sc->sh.slice_ctb_addr_rs];
 
     while (more_data) {
-        int ctb_addr_rs       = sc->pps->ctb_addr_ts_to_rs[ctb_addr_ts];
+    	int ctb_addr_rs       = sc->pps->ctb_addr_ts_to_rs[ctb_addr_ts];
         x_ctb = (ctb_addr_rs % ((sc->sps->pic_width_in_luma_samples + (ctb_size - 1))>> sc->sps->log2_ctb_size)) << sc->sps->log2_ctb_size;
         y_ctb = (ctb_addr_rs / ((sc->sps->pic_width_in_luma_samples + (ctb_size - 1))>> sc->sps->log2_ctb_size)) << sc->sps->log2_ctb_size;
         
@@ -2025,6 +2024,7 @@ static int hls_decode_entry(AVCodecContext *avctxt, void *isFilterThread)
         save_states(s, ctb_addr_ts);
         hls_filters(s, x_ctb, y_ctb, ctb_size);
     }
+
     if (x_ctb + ctb_size >= sc->sps->pic_width_in_luma_samples && y_ctb + ctb_size >= sc->sps->pic_height_in_luma_samples)
         hls_filter(s, x_ctb, y_ctb);
     return ctb_addr_ts;
@@ -2032,6 +2032,7 @@ static int hls_decode_entry(AVCodecContext *avctxt, void *isFilterThread)
 
 static int hls_slice_data(HEVCContext *s)
 {
+
     int arg[2];
     int ret[2];
     HEVCSharedContext *sc = s->HEVCsc;
@@ -2044,6 +2045,7 @@ static int hls_slice_data(HEVCContext *s)
         sc->SliceAddrRs = (sc->sh.dependent_slice_segment_flag == 0 ? sc->sh.slice_address : sc->SliceAddrRs);
     }
     av_atomic_int_set(&sc->coding_tree_count, 0);
+
     s->avctx->execute(s->avctx, hls_decode_entry, arg, ret , 1, sizeof(int));
     return ret[0];
 }
@@ -2052,6 +2054,7 @@ static int hls_slice_data(HEVCContext *s)
 
 static int hls_decode_entry_wpp(AVCodecContext *avctxt, void *input_ctb_row)
 {
+
     HEVCContext *s  = avctxt->priv_data;
     HEVCSharedContext *sc = s->HEVCsc;
     HEVCLocalContext *lc;
@@ -2064,6 +2067,7 @@ static int hls_decode_entry_wpp(AVCodecContext *avctxt, void *input_ctb_row)
     int ctb_addr_ts = sc->pps->ctb_addr_rs_to_ts[ctb_addr_rs];
     s = s->sList[(*ctb_row)%s->threads_number];
     lc = s->HEVClc;
+
     if(*ctb_row) {
         init_get_bits(lc->gb, sc->data+sc->sh.offset[(*ctb_row)-1], sc->sh.size[(*ctb_row)-1]*8);
         ff_init_cabac_decoder(lc->cc, sc->data+sc->sh.offset[(*ctb_row)-1], sc->sh.size[(*ctb_row)-1]);
@@ -2345,7 +2349,6 @@ static int hevc_decode_frame(AVCodecContext *avctx, void *data, int *got_output,
         break;
     case NAL_SPS:
         ff_hevc_decode_nal_sps(s);
-            
         break;
     case NAL_PPS:
         ff_hevc_decode_nal_pps(s);
@@ -2370,10 +2373,9 @@ static int hevc_decode_frame(AVCodecContext *avctx, void *data, int *got_output,
     case NAL_RADL_R:
     case NAL_RASL_N:
     case NAL_RASL_R:
-            
-        printf("Parse slice header ");
+
         ret = hls_slice_header(s);
-            printf("Parse slice header ok. ");
+
         lc->isFirstQPgroup = !sc->sh.dependent_slice_segment_flag;
         
         if (ret < 0)
@@ -2395,7 +2397,7 @@ static int hevc_decode_frame(AVCodecContext *avctx, void *data, int *got_output,
 
         if (sc->nal_unit_type == NAL_RASL_R && sc->poc <= sc->max_ra) {
             sc->is_decoded = 0;
-            printf("not decoded %d %d\n", sc->poc, sc->max_ra);
+        //    printf("not decoded %d %d\n", sc->poc, sc->max_ra);
             break;
         } else {
             if (sc->nal_unit_type == NAL_RASL_R && sc->poc > sc->max_ra)
@@ -2445,12 +2447,14 @@ static int hevc_decode_frame(AVCodecContext *avctx, void *data, int *got_output,
         if(s->threads_number>1 && sc->sh.num_entry_point_offsets > 0 ) {
             ctb_addr_ts = hls_slice_data_wpp(s, avpkt);
         } else {
+
             ctb_addr_ts = hls_slice_data(s);
+
         }
             
-     
+
         if (s->decode_checksum_sei && ctb_addr_ts >= (sc->sps->pic_width_in_ctbs * sc->sps->pic_height_in_ctbs) ) {
-          
+
           
 #ifdef POC_DISPLAY_MD5
             AVFrame *frame = (AVFrame *) data;
@@ -2497,6 +2501,7 @@ static int hevc_decode_frame(AVCodecContext *avctx, void *data, int *got_output,
         printf("s->id %d \n", s->id);
         exit(-1);
     }*/
+
     return avpkt->size;
 }
 
