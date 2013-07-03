@@ -872,6 +872,19 @@ typedef struct HEVCLocalContext {
     PredictionUnit pu;
 } HEVCLocalContext;
 
+#ifdef SVC_EXTENSION
+typedef struct UpsamplInf {
+	int addXLum;
+	int addYLum;
+	int scaleXLum;
+	int scaleYLum;
+	int addXCr;
+	int addYCr;
+	int scaleXCr;
+	int scaleYCr;
+} UpsamplInf;
+#endif
+
 typedef struct HEVCSharedContext {
     uint8_t *cabac_state; //
     
@@ -881,8 +894,7 @@ typedef struct HEVCSharedContext {
 #ifdef SVC_EXTENSION
     AVFrame *upsampled_frame;
     short *buffer_frame[3];
-   // int32_t *up_sample_filter_chroma;
-   // int32_t *up_sample_filter_lum;
+    UpsamplInf up_filter_inf;
 #endif
     VPS *vps;
     SPS *sps;

@@ -5327,45 +5327,36 @@ static void FUNC(hevc_loop_filter_chroma)(uint8_t *_pix, ptrdiff_t _xstride, ptr
 
 #ifdef SVC_EXTENSION
 #define LumHor_FILTER(pel, coeff) \
-((short)pel[0]*coeff[0] + (short)pel[1]*coeff[1] + (short)pel[2]*coeff[2] + (short)pel[3]*coeff[3] + (short)pel[4]*coeff[4] + (short)pel[5]*coeff[5] + (short)pel[6]*coeff[6] + (short)pel[7]*coeff[7])
+(pel[0]*coeff[0] + pel[1]*coeff[1] + pel[2]*coeff[2] + coeff[3]*pel[3] + pel[4]*coeff[4] + pel[5]*coeff[5] + pel[6]*coeff[6] + pel[7]*coeff[7])
 
 #define CroHor_FILTER(pel, coeff) \
-((short)pel[0]*coeff[0] + (short)pel[1]*coeff[1] + (short)pel[2]*coeff[2] + (short)pel[3]*coeff[3])
+(pel[0]*coeff[0] + pel[1]*coeff[1] + pel[2]*coeff[2] + pel[3]*coeff[3])
 
 #define LumVer_FILTER(pel, coeff) \
 (pel[0]*coeff[0] + pel[1]*coeff[1] + pel[2]*coeff[2] + pel[3]*coeff[3] + pel[4]*coeff[4] + pel[5]*coeff[5] + pel[6]*coeff[6] + pel[7]*coeff[7])
 
 #define CroVer_FILTER(pel, coeff) \
 (pel[0]*coeff[0] + pel[1]*coeff[1] + pel[2]*coeff[2] + pel[3]*coeff[3])
+
+#define LumVer_FILTER1(pel, coeff, width) \
+(pel[0]*coeff[0] + pel[width]*coeff[1] + pel[width*2]*coeff[2] + pel[width*3]*coeff[3] + pel[width*4]*coeff[4] + pel[width*5]*coeff[5] + pel[width*6]*coeff[6] + pel[width*7]*coeff[7])
 // Define the function for up-sampling
+#define CroVer_FILTER1(pel, coeff, widthEL) \
+(pel[0]*coeff[0] + pel[widthEL]*coeff[1] + pel[widthEL*2]*coeff[2] + pel[widthEL*3]*coeff[3])
 
 
 
 
-
-static void FUNC(upsample_base_layer_frame)(AVFrame *FrameEL, AVFrame *FrameBL, short *Buffer[3], const int32_t enabled_up_sample_filter_luma[16][8], const int32_t enabled_up_sample_filter_chroma[16][4], struct HEVCWindow *Enhscal)
+static void FUNC(upsample_base_layer_frame)(AVFrame *FrameEL, AVFrame *FrameBL, short *Buffer[3], const int32_t enabled_up_sample_filter_luma[16][8], const int32_t enabled_up_sample_filter_chroma[16][4], struct HEVCWindow *Enhscal, struct UpsamplInf *up_info)
 {
     int i,j, k;
-//    printf("Start upsampling \n");
-#if SCALED_REF_LAYER_OFFSETS
     int widthBL =  FrameBL->width;
     int heightBL = FrameBL->height;
     int strideBL = FrameBL->linesize[0];
     int widthEL =  FrameEL->width - Enhscal->left_offset - Enhscal->right_offset;
     int heightEL = FrameEL->height - Enhscal->top_offset - Enhscal->bottom_offset;
     int strideEL = FrameEL->linesize[0];
-#else
-    const HEVCWindow &confBL; //= pcBasePic->getConformanceWindow();
-    const HEVCWindow &confEL; //= pcUsPic->getConformanceWindow();
-    
-    int widthBL   = FrameBL->width - confBL.left_offset - confBL.right_offset;
-    int heightBL  = FrameBL->height - confBL.top_offset - confBL.bottom_offset;
-    int strideBL  = FrameBL->linesize[0];
-    
-    int widthEL   = FrameEL->width - confEL.getWindowLeftOffset() - confEL.getWindowRightOffset();
-    int heightEL  = FrameEL->height - confEL.getWindowTopOffset() - confEL.getWindowBottomOffset();
-    int strideEL  = FrameEL->linesize[0];
-#endif
+
     pixel *srcBufY = (pixel*)FrameBL->data[0];
     pixel *dstBufY = (pixel*)FrameEL->data[0];
     short *tempBufY = Buffer[0];
@@ -5389,529 +5380,194 @@ static void FUNC(upsample_base_layer_frame)(AVFrame *FrameEL, AVFrame *FrameBL, 
     short *dstV1;
     short *srcV1;
     
-    if( widthEL == widthBL && heightEL == heightBL ) //Copy frame
-    {
-        srcY = srcBufY - Enhscal->left_offset - Enhscal->right_offset * strideEL;
-        dstY = dstBufY;
-        for( i = 0; i < heightEL; i++ )
-        {
-            memcpy( dstY, srcY, sizeof(pixel) * widthBL );
-            srcY += strideBL;
-            srcY += strideEL;
+    int refPos16 = 0;
+    int phase    = 0;
+    int refPos   = 0;
+    int32_t* coeff = enabled_up_sample_filter_chroma[phase];
+    widthEL   = FrameEL->width;  //pcUsPic->getWidth ();
+    heightEL  = FrameEL->height; //pcUsPic->getHeight();
+        
+    widthBL   = FrameBL->width;
+    heightBL  = FrameBL->height <= heightEL ? FrameBL->height:heightEL;  // min( FrameBL->height, heightEL);
+    int leftStartL = Enhscal->left_offset;
+    int rightEndL  = FrameEL->width - Enhscal->right_offset;
+    int topStartL  = Enhscal->top_offset;
+    int bottomEndL = FrameEL->height - Enhscal->bottom_offset;
+     
+    pixel buffer[8];
+    for( i = 0; i < widthEL; i++ )	{
+    	int x = av_clip_c(i, leftStartL, rightEndL);
+        refPos16 = (((x - leftStartL)*up_info->scaleXLum + up_info->addXLum) >> 12);
+        phase    = refPos16 & 15;
+        refPos   = refPos16 >> 4;
+        coeff = enabled_up_sample_filter_luma[phase];
+        refPos -= ((NTAPS_LUMA>>1) - 1);
+        srcY = srcBufY + refPos;
+        dstY1 = tempBufY + i;
+        for( j = 0; j < heightBL ; j++ )	{
+        	if(refPos < 0) {
+        		memset(buffer, srcY[-refPos], -refPos);
+                memcpy(buffer-refPos, srcY-refPos, 8+refPos);
+                *dstY1 = LumHor_FILTER(buffer, coeff);
+        	} else if(refPos+8 > widthBL ) {
+        		memcpy(buffer, srcY, widthBL-refPos);
+                memset(buffer+(widthBL-refPos), srcY[widthBL-refPos-1], 8-(widthBL-refPos));
+                *dstY1 = LumHor_FILTER(buffer, coeff);
+        		} else {
+        			*dstY1 = LumHor_FILTER(srcY, coeff);
+                }
+        	srcY += strideBL;
+            dstY1 += widthEL;//strideEL;
         }
-        
-        widthEL  >>= 1;
-        heightEL >>= 1;
-        
-        widthBL  >>= 1;
-        heightBL >>= 1;
-        
-        strideBL  = FrameBL->linesize[1];
-        strideEL  = FrameEL->linesize[1];
-        
-        srcU = srcBufU - ( Enhscal->left_offset >> 1 ) - ( Enhscal->top_offset >> 1 ) * strideEL;
-        srcV = srcBufV - ( Enhscal->left_offset >> 1 ) - ( Enhscal->top_offset >> 1 ) * strideEL;
-        
-        dstU = dstBufU;
-        dstV = dstBufV;
-        
-        for( i = 0; i < heightEL; i++ )
-        {
-            memcpy( dstU, srcU, sizeof(pixel) * widthBL );
-            memcpy( dstV, srcV, sizeof(pixel) * widthBL );
-            srcU += strideBL;
-            srcV += strideBL;
-            dstU += strideEL;
-            dstV += strideEL;
+            
+    }
+    const int nShift = US_FILTER_PREC*2;
+    int iOffset = 1 << (nShift - 1);
+    short buffer1[8];
+    for( j = 0; j < heightEL; j++ )	{
+    	int y = av_clip_c(j, topStartL, bottomEndL-1);
+    	refPos16 = ((( y - topStartL )*up_info->scaleYLum + up_info->addYLum) >> 12);
+        phase    = refPos16 & 15;
+        refPos   = refPos16 >> 4;
+        coeff = enabled_up_sample_filter_luma[phase];
+        refPos -= ((NTAPS_LUMA>>1) - 1);
+        srcY1 = tempBufY + refPos *widthEL;
+        dstY = dstBufY + j * strideEL;
+        for( i = 0; i < widthEL; i++ )	{
+        	if(refPos < 0) {
+        		for(k= 0; k<-refPos ; k++)
+        			buffer1[k] = srcY1[-refPos*widthEL]; //srcY1[(-refPos+k)*strideEL];
+                for(k= 0; k<8+refPos ; k++)
+                	buffer1[-refPos+k] = srcY1[(-refPos+k)*widthEL];
+                *dstY = av_clip_pixel( (LumVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
+        	} else if(refPos+8 > heightBL ) {
+            for(k= 0; k<heightBL-refPos ; k++)
+            	buffer1[k] = srcY1[k*widthEL];
+            for(k= 0; k<8-(heightBL-refPos) ; k++)
+            	buffer1[heightBL-refPos+k] = srcY1[(heightBL-refPos-1)*widthEL];
+            	*dstY = av_clip_pixel( (LumVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
+        	} else {
+        		*dstY = av_clip_pixel( (LumVer_FILTER1(srcY1, coeff, widthEL) + iOffset) >> (nShift));
+        	}
+
+            if( (i >= leftStartL) && (i <= rightEndL-2) )
+            	srcY1++;
+            dstY++;
         }
     }
-    else
-    {
-#if PHASE_DERIVATION_IN_INTEGER
-        int refPos16 = 0;
-        int phase    = 0;
-        int refPos   = 0;
-        int32_t* coeff = enabled_up_sample_filter_chroma[phase];
-#else
-        int chromaPhaseDenominator;
-        if (widthEL == 2*widthBL) // 2x scalability
-            chromaPhaseDenominator = 8; 
-        else
-            chromaPhaseDenominator = 12;
-#endif
+    widthBL   = FrameBL->width;
+    heightBL  = FrameBL->height;
         
+    widthEL   = FrameEL->width - Enhscal->right_offset - Enhscal->left_offset;
+    heightEL  = FrameEL->height - Enhscal->top_offset - Enhscal->bottom_offset;
         
+    widthEL  >>= 1;
+    heightEL >>= 1;
+    widthBL  >>= 1;
+    heightBL >>= 1;
+    strideBL  = FrameBL->linesize[1];
+    strideEL  = FrameEL->linesize[1];
+    int leftStartC = Enhscal->left_offset>>1;
+    int rightEndC  = (FrameEL->width>>1) - (Enhscal->right_offset>>1);
+    int topStartC  = Enhscal->top_offset>>1;
+    int bottomEndC = (FrameEL->height>>1) - (Enhscal->bottom_offset>>1);
         
-        
-#if PHASE_DERIVATION_IN_INTEGER
-        int   shiftX = 16;
-        int   shiftY = 16;
-        
-        int   phaseX = 0;
-        int   phaseY = 0;
-        
-        int   addX       = ( ( ( widthBL * phaseX ) << ( shiftX - 2 ) ) + ( widthEL >> 1 ) ) / widthEL + ( 1 << ( shiftX - 5 ) );
-        int   addY       = ( ( ( heightBL * phaseY ) << ( shiftY - 2 ) ) + ( heightEL >> 1 ) ) / heightEL+ ( 1 << ( shiftY - 5 ) );
-        
-        int   deltaX     = 4 * phaseX;
-        int   deltaY     = 4 * phaseY;
-        
-        int shiftXM4 = shiftX - 4;
-        int shiftYM4 = shiftY - 4;
-        
-        int   scaleX     = ( ( widthBL << shiftX ) + ( widthEL >> 1 ) ) / widthEL;
-        int   scaleY     = ( ( heightBL << shiftY ) + ( heightEL >> 1 ) ) / heightEL;
-        // printf("shiftX: %d shiftY %d addX %d addY %d shiftXM4 %d shiftYM4 %d \n", shiftX, shiftY, addX, addY, shiftXM4, shiftYM4);
-#else
-        const double sFactor = 1.0 * widthBL / widthEL;
-        const double sFactor12 = sFactor * 12;
-#endif
-#if ILP_DECODED_PICTURE
-        widthEL   = FrameEL->width;  //pcUsPic->getWidth ();
-        heightEL  = FrameEL->height; //pcUsPic->getHeight();
-        
-        widthBL   = FrameBL->width;
-        heightBL  = FrameBL->height <= heightEL ? FrameBL->height:heightEL;  // min( FrameBL->height, heightEL);
-      //  printf("widthEL: %d heightEL: %d widthBL: %d heightBL: %d \n",widthEL, heightEL, widthBL, heightBL );
-        
-#endif
-#if SCALED_REF_LAYER_OFFSETS
-        int leftStartL = Enhscal->left_offset;
-        int rightEndL  = FrameEL->width - Enhscal->right_offset;
-        int topStartL  = Enhscal->top_offset;
-        int bottomEndL = FrameEL->height - Enhscal->bottom_offset;
-        //printf("leftStartL: %d rightEndL: %d topStartL: %d bottomEndL: %d \n",leftStartL, rightEndL, topStartL, bottomEndL );
-        
-#endif
-     
-        pixel buffer[8];
-        for( i = 0; i < widthEL; i++ )
-        {
-#if SCALED_REF_LAYER_OFFSETS
-            int x = av_clip_c(i, leftStartL, rightEndL);
-#endif
-#if PHASE_DERIVATION_IN_INTEGER
-#if SCALED_REF_LAYER_OFFSETS
-            refPos16 = (((x - leftStartL)*scaleX + addX) >> shiftXM4) - deltaX;
-#else
-            refPos16 = ((i*scaleX + addX) >> shiftXM4) - deltaX;
-#endif
-            phase    = refPos16 & 15;
-            refPos   = refPos16 >> 4;
-            coeff = enabled_up_sample_filter_luma[phase];
-#else
-            int refPos12 = (Int) ( i * sFactor12 );
-            int refPos = (Int)( i * sFactor );
-            int phase = (refPos12 + 12) % 12;
-            int32_t* coeff = enabled_up_sample_filter_luma[phase];
-#endif
-            refPos -= ((NTAPS_LUMA>>1) - 1);
-            srcY = srcBufY + refPos;
-            dstY1 = tempBufY + i;
 
-            for( j = 0; j < heightBL ; j++ )
-            {
-                if(refPos < 0) {
-                    memset(buffer, srcY[-refPos], -refPos);
-                    memcpy(buffer-refPos, srcY-refPos, 8+refPos);
-                } else if(refPos+8 > widthBL ) {
-                    memcpy(buffer, srcY, widthBL-refPos);
-                    memset(buffer+(widthBL-refPos), srcY[widthBL-refPos-1], 8-(widthBL-refPos));
-                } else {
-                    memcpy(buffer, srcY, 8);
-                    
-                }
-                *dstY1 = LumHor_FILTER(buffer, coeff);
-                srcY += strideBL;
-                dstY1 += widthEL;//strideEL;
-                
-            }
-            
-        }
-       
+    widthEL   = FrameEL->width >> 1;
+    heightEL  = FrameEL->height >> 1;
+    widthBL   = FrameBL->width >> 1;
+    heightBL  = FrameBL->height <= heightEL ? FrameBL->height:heightEL;
+    heightBL >>= 1;
 
-        //========== vertical upsampling ===========
-        /*TempPic->setBorderExtension(false);
-         pcTempPic->setHeight(heightBL);
-         pcTempPic->extendPicBorder   (); // extend the border.
-         pcTempPic->setHeight(heightEL);*/
-        
-        //Buffer->height = heightEL;
-        //Buffer->width = heightBL;
-        
-        
-        
-        const int nShift = US_FILTER_PREC*2;
-        int iOffset = 1 << (nShift - 1);
-        short buffer1[8];
-#if SCALED_REF_LAYER_OFFSETS
-        for( j = 0; j < heightEL; j++ )
-#else
-            for( j = 0; j < heightEL; j++ )
-#endif
-            {
-#if SCALED_REF_LAYER_OFFSETS
-                int y = av_clip_c(j, topStartL, bottomEndL-1);
-#endif
-#if PHASE_DERIVATION_IN_INTEGER
-#if SCALED_REF_LAYER_OFFSETS
-                refPos16 = ((( y - topStartL )*scaleY + addY) >> shiftYM4) - deltaY;
-#else
-                refPos16 = ((j*scaleY + addY) >> shiftYM4) - deltaY;
-#endif
-                phase    = refPos16 & 15;
-                refPos   = refPos16 >> 4;
-                coeff = enabled_up_sample_filter_luma[phase];
-#else
-                Int refPos12 = (Int) (j * sFactor12 );
-                Int refPos = (Int)( j * sFactor );
-                Int phase = (refPos12 + 12) % 12;
-                Int* coeff = enabled_up_sample_filter_luma[phase];
-#endif
-                /*  
-                 if(!j)
-                 printf("%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d \n", i, j, buffer[0] , buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6], buffer[7],coeff[0], coeff[1], coeff[2], coeff[3], coeff[4], coeff[5], refPos, widthBL, dstY[0]);*/
-                refPos -= ((NTAPS_LUMA>>1) - 1);
-                
-                srcY1 = tempBufY + refPos *widthEL;
-                dstY = dstBufY + j * strideEL;
-             //   printf("%d %d \n", refPos,heightBL);
-#if SCALED_REF_LAYER_OFFSETS
-                for( i = 0; i < widthEL; i++ )
-#else
-                    for( i = 0; i < widthEL; i++ )
-#endif
-                    {
-                        
-                        if(refPos < 0) {
-                          //  memset(buffer1, srcY1[-refPos], -refPos);
-                            for(k= 0; k<-refPos ; k++)
-                                buffer1[k] = srcY1[-refPos*widthEL]; //srcY1[(-refPos+k)*strideEL];
-                            for(k= 0; k<8+refPos ; k++)
-                                buffer1[-refPos+k] = srcY1[(-refPos+k)*widthEL];
-                        } else if(refPos+8 > heightBL ) {
-                        	// printf("%d %d %d %d \n", refPos,heightBL, heightBL-refPos, 8-(heightBL-refPos) );
-                            for(k= 0; k<heightBL-refPos ; k++)
-                                buffer1[k] = srcY1[k*widthEL];
-
-                            for(k= 0; k<8-(heightBL-refPos) ; k++){
-                                buffer1[heightBL-refPos+k] = srcY1[(heightBL-refPos-1)*widthEL];
-                               //heightBL printf("%d \n", srcY1[(heightEL-refPos-1)*widthEL]);
-                            }
-                            //memcpy(buffer, srcY1, widthBL-refPos);
-                           // memset(buffer+(widthBL-refPos), srcY1[widthBL-refPos-1], 8-(widthBL-refPos));
-                        } else {
-                            for(k= 0; k<8 ; k++)
-                                buffer1[k] = srcY1[k*widthEL];
-     //                       memcpy(buffer, srcY1, 8);
-                        }
-                       // if((j+10) > heightEL)
-                        //	printf("%d %d %d %d %d %d %d %d ", buffer1[0], buffer1[1], buffer1[2], buffer1[3], buffer1[4], buffer1[5], buffer1[6] , buffer1[7]);
-                        *dstY = av_clip_pixel( (LumVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
-                     //   printf("%d %d %d ", i, j, *dstY);
-                      //  if(!j)
-                        //    printf("%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d \n", i, j, buffer1[0] , buffer1[1], buffer1[2], buffer1[3], buffer1[4], buffer1[5], buffer1[6], buffer1[7],coeff[0], coeff[1], coeff[2], coeff[3], coeff[4], coeff[5], refPos, widthBL, dstY[0]);
-#if SCALED_REF_LAYER_OFFSETS
-                        // Only increase the x position of reference upsample picture when within the window
-                        // "-2" to ensure that pointer doesn't go beyond the boundary rightEndL-1
-                        if( (i >= leftStartL) && (i <= rightEndL-2) )
-                        {
-                            srcY1++;
-                        }
-#else
-                        srcY1++;
-#endif
-
-                        dstY++;
-                    }
-             //   if((j+10) > heightEL)
-               // 	printf("\n");
-            }
-/*
-        printf("Vertical upsampling \n");
-                  for( j = 0; j < heightEL; j++ )
-                    {
-                	  dstY = dstBufY + j * strideEL;
-
-                      for( i = 0; i < widthEL ; i++ )
-                      {
-                        printf("%d ", dstY[0]);
-                        dstY ++;
-                      }
-                      printf("\n");
-                    }
-                  exit(-1);*/
- //   exit(-1);
-        
-      //  printf("widthEL: %d heightEL: %d widthBL: %d heightBL: %d \n",widthEL, heightEL, widthBL, heightBL );
-        
-        
-        
-#if ILP_DECODED_PICTURE
-#if SCALED_REF_LAYER_OFFSETS
-        widthBL   = FrameBL->width; //pcBasePic->getWidth ();
-        heightBL  = FrameBL->height; // pcBasePic->getHeight();
-        
-        widthEL   = FrameEL->width - Enhscal->right_offset - Enhscal->left_offset;
-        heightEL  = FrameEL->height - Enhscal->top_offset - Enhscal->bottom_offset; //pcUsPic->getHeight() - scalEL.getWindowTopOffset()  - scalEL.getWindowBottomOffset();
-#else
-        widthBL   = FrameBL->width; //- confBL.getWindowLeftOffset() - confBL.getWindowRightOffset();
-        heightBL  = FrameEL->height; //- confBL.getWindowTopOffset() - confBL.getWindowBottomOffset();
-        
-        widthEL   = FrameEL->width; //- confEL.getWindowLeftOffset() - confEL.getWindowRightOffset();
-        heightEL  = FrameEL->height; //- confEL.getWindowTopOffset() - confEL.getWindowBottomOffset();
-#endif
-#endif
-
-        //========== UV component upsampling ===========
-        
-        widthEL  >>= 1;
-        heightEL >>= 1;
-        
-        widthBL  >>= 1;
-        heightBL >>= 1;
-       // printf("heightBL --  %d \n", heightBL);
-
-        strideBL  = FrameBL->linesize[1];
-        strideEL  = FrameEL->linesize[1];
-#if SCALED_REF_LAYER_OFFSETS
-        int leftStartC = Enhscal->left_offset>>1;
-        int rightEndC  = (FrameEL->width>>1) - (Enhscal->right_offset>>1);
-        int topStartC  = Enhscal->top_offset>>1;
-        int bottomEndC = (FrameEL->height>>1) - (Enhscal->bottom_offset>>1);
-#endif
-        
-#if PHASE_DERIVATION_IN_INTEGER
-        shiftX = 16;
-        shiftY = 16;
-        
-        phaseX = 0;
-        phaseY = 1;
-        
-        addX       = ( ( ( widthBL * phaseX ) << ( shiftX - 2 ) ) + ( widthEL >> 1 ) ) / widthEL + ( 1 << ( shiftX - 5 ) );
-        addY       = ( ( ( heightBL * phaseY ) << ( shiftY - 2 ) ) + ( heightEL >> 1 ) ) / heightEL+ ( 1 << ( shiftY - 5 ) );
-        
-        deltaX     = 4 * phaseX;
-        deltaY     = 4 * phaseY;
-        
-        shiftXM4 = shiftX - 4;
-        shiftYM4 = shiftY - 4;
-        
-        scaleX     = ( ( widthBL << shiftX ) + ( widthEL >> 1 ) ) / widthEL;
-        scaleY     = ( ( heightBL << shiftY ) + ( heightEL >> 1 ) ) / heightEL;
-#endif
-        
-#if ILP_DECODED_PICTURE
-        widthEL   = FrameEL->width >> 1;
-        heightEL  = FrameEL->height >> 1;
-        
-        widthBL   = FrameBL->width >> 1;
-        //        heightBL  = min( FrameBL->height, heightEL );
-    //    printf("heightBL ==  %d \n", heightBL);
-        heightBL  = FrameBL->height <= heightEL ? FrameBL->height:heightEL;
-      //  printf("heightBL+++  %d \n", heightBL);
-        heightBL >>= 1;
-      //  printf("heightBL %d \n", heightBL);
-#endif
-        //exit(-1);
-     //   printf("heightEL %d \n", heightBL);
-      //  exit(-1);
         //========== horizontal upsampling ===========
-        for( i = 0; i < widthEL; i++ )
-        {
-            
-#if SCALED_REF_LAYER_OFFSETS
-            int x = av_clip_c(i, leftStartC, rightEndC - 1);
-#endif
-#if PHASE_DERIVATION_IN_INTEGER
-#if SCALED_REF_LAYER_OFFSETS
-            refPos16 = (((x - leftStartC)*scaleX + addX) >> shiftXM4) - deltaX;
-#else
-            refPos16 = ((i*scaleX + addX) >> shiftXM4) - deltaX;
-#endif
-            phase    = refPos16 & 15;
-            refPos   = refPos16 >> 4;
-            coeff = enabled_up_sample_filter_chroma[phase];
-#else
-            int refPosM = (Int) ( i * chromaPhaseDenominator * sFactor );
-            int refPos = (Int)( i * sFactor );
-            int phase = (refPosM + chromaPhaseDenominator) % chromaPhaseDenominator;
-            int* coeff = enabled_up_sample_filter_chroma[phase];
-#endif
-            
-            
-            refPos -= ((NTAPS_CHROMA>>1) - 1);
-            
-          
-            srcU = srcBufU + refPos; // -((NTAPS_CHROMA>>1) - 1);
-            srcV = srcBufV + refPos; // -((NTAPS_CHROMA>>1) - 1);
-            dstU1 = tempBufU + i;
-            dstV1 = tempBufV + i;
-            
-            for( j = 0; j < heightBL ; j++ )
-            {
-               //         printf("heightBL %d \n", heightBL);
-               // printf("j %d %d \n", j, heightBL);
-                if(refPos < 0) {
-                    memset(buffer, srcU[-refPos], -refPos);
-                    memcpy(buffer-refPos, srcU-refPos, 4+refPos);
-                    
-                    memset(buffer+4, srcV[-refPos], -refPos);
-                    memcpy(buffer-refPos+4, srcV-refPos, 4+refPos);
-                    
-                } else if(refPos+4 > widthBL ) {
-                    memcpy(buffer, srcU, widthBL-refPos);
-                    memset(buffer+(widthBL-refPos), srcU[widthBL-refPos-1], 4-(widthBL-refPos));
-                    
-                    memcpy(buffer+4, srcV, widthBL-refPos);
-                    memset(buffer+(widthBL-refPos)+4, srcV[widthBL-refPos-1], 4-(widthBL-refPos));
-                    
-                } else {
-                    memcpy(buffer, srcU, 4);
-                    memcpy(buffer+4, srcV, 4);
-                    
-                }
-                
-                
+    for( i = 0; i < widthEL; i++ )	{
+    	int x = av_clip_c(i, leftStartC, rightEndC - 1);
+        refPos16 = (((x - leftStartC)*up_info->scaleXCr + up_info->addXCr) >> 12);
+        phase    = refPos16 & 15;
+        refPos   = refPos16 >> 4;
+        coeff = enabled_up_sample_filter_chroma[phase];
+        refPos -= ((NTAPS_CHROMA>>1) - 1);
+        srcU = srcBufU + refPos; // -((NTAPS_CHROMA>>1) - 1);
+        srcV = srcBufV + refPos; // -((NTAPS_CHROMA>>1) - 1);
+        dstU1 = tempBufU + i;
+        dstV1 = tempBufV + i;
+        for( j = 0; j < heightBL ; j++ )	{
+        	if(refPos < 0) {
+        		memset(buffer, srcU[-refPos], -refPos);
+                memcpy(buffer-refPos, srcU-refPos, 4+refPos);
+                memset(buffer+4, srcV[-refPos], -refPos);
+                memcpy(buffer-refPos+4, srcV-refPos, 4+refPos);
                 *dstU1 = CroHor_FILTER(buffer, coeff);
                 *dstV1 = CroHor_FILTER((buffer+4), coeff);
-           //     if(!j)
-             //       printf("%d %d %d %d %d %d %d %d %d %d %d \n", i, j, buffer[0] , buffer[1], buffer[2], buffer[3], coeff[0], coeff[1], coeff[2], coeff[3], dstU[0]);
-                srcU += strideBL;
-                srcV += strideBL;
-                dstU1 += widthEL;
-                dstV1 += widthEL;
-            }
-            
-        }
-//        exit(-1);
-        //========== vertical upsampling ===========
-        /* pcTempPic->setBorderExtension(false);
-         pcTempPic->setHeight(heightBL << 1);
-         pcTempPic->extendPicBorder   (); // extend the border.
-         pcTempPic->setHeight(heightEL << 1);*/
-        
-     
-#if SCALED_REF_LAYER_OFFSETS
-        for( j = 0; j < heightEL; j++ )
-#else
-            for( j = 0; j < heightEL; j++ )
-#endif
-            {
-#if SCALED_REF_LAYER_OFFSETS
-                int y = av_clip_c(j, topStartC, bottomEndC - 1);
-#endif
-#if PHASE_DERIVATION_IN_INTEGER
-#if SCALED_REF_LAYER_OFFSETS
-                refPos16 = (((y - topStartC)*scaleY + addY) >> shiftYM4) - deltaY;
-#else
-                refPos16 = ((j*scaleY + addY) >> shiftYM4) - deltaY;
-#endif
-                phase    = refPos16 & 15;
-                refPos   = refPos16 >> 4;
-                coeff = enabled_up_sample_filter_chroma[phase];
-#else
-                Int refPosM = (Int) (j * chromaPhaseDenominator * sFactor) - 1;
-                Int refPos;
-                if ( refPosM < 0 )
-                {
-                    refPos = (Int)( j * sFactor ) - 1;
-                }
-                else
-                {
-                    refPos = refPosM / chromaPhaseDenominator;
-                }
-                int phase = (refPosM + chromaPhaseDenominator) % chromaPhaseDenominator;
-                int* coeff = enabled_up_sample_filter_chroma[phase];
-#endif
-                refPos -= ((NTAPS_CHROMA>>1) - 1);
-              //  printf("refPos %d heightEL %d bottomEndC %d \n", refPos, heightEL, bottomEndC);
-                srcU1 = tempBufU  + refPos *widthEL;
-                srcV1 = tempBufV  + refPos *widthEL;
-                
-                dstU = dstBufU + j*strideEL;
-                dstV = dstBufV + j*strideEL;
-                
-#if SCALED_REF_LAYER_OFFSETS
-                for( i = 0; i < widthEL; i++ )
-#else
-                    for( i = 0; i < widthEL; i++ )
-#endif
-                    {
-                        if(refPos < 0) {
-                              //   printf("refPos+4 %d heightEL %d \n", refPos, heightEL);
-                            //memset(buffer, srcY1[-refPos], -refPos);
-                            for(k= 0; k<-refPos ; k++){
-                                buffer1[k] = srcU1[(-refPos)*widthEL];
-                                buffer1[k+4] = srcV1[(-refPos)*widthEL];
-                            }
-                            for(k= 0; k<4+refPos ; k++){
-                                buffer1[-refPos+k] = srcU1[(-refPos+k)*widthEL];
-                                buffer1[-refPos+k+4] = srcV1[(-refPos+k)*widthEL];
-                            }
-                        } else if(refPos+4 > heightEL ) {
-                      //     printf("refPos %d  heightEL %d widthEL %d heightBL %d \n", refPos+4, heightEL, widthEL, heightBL);
-                            for(k= 0; k< heightBL-refPos ; k++) {
-                                buffer1[k] = srcU1[k*widthEL];
-                                buffer1[k+4] = srcV1[k*widthEL];
-                            }
-                            for(k= 0; k<4-(heightEL-refPos) ; k++) {
-                                buffer1[heightEL-refPos+k] = srcU1[(heightBL-refPos-1)*widthEL];
-                      //          printf("heightBL-refPos+k+4 %d \n", heightBL-refPos+k+4);
-                                buffer1[heightEL-refPos+k+4] = srcV1[(heightBL-refPos-1)*widthEL];
-                            }
-                            //memcpy(buffer, srcY1, widthBL-refPos);
-                            // memset(buffer+(widthBL-refPos), srcY1[widthBL-refPos-1], 8-(widthBL-refPos));
-                        } else {
-                            for(k= 0; k<4 ; k++) {
-                                buffer1[k] = srcU1[k*widthEL];
-                                buffer1[k+4] = srcV1[k*widthEL];
-                            }
-                            //                       memcpy(buffer, srcY1, 8);
-                        }
+        	} else if(refPos+4 > widthBL ) {
+        		memcpy(buffer, srcU, widthBL-refPos);
+                memset(buffer+(widthBL-refPos), srcU[widthBL-refPos-1], 4-(widthBL-refPos));
 
-                        
-                    //   printf(" %d %d %d %d %d %d %d %d %d \n",  phase, coeff[0], coeff[1], coeff[2], coeff[3], buffer1[0], buffer1[1], buffer1[2], buffer1[3] );
-                       // /*dstU =*/ av_clip_pixel( (CroVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
-             //           /**dstV =*/ av_clip_pixel( (CroVer_FILTER((buffer1+4), coeff) + iOffset) >> (nShift));
-                      //  if(!j)
-                       //     printf("%d %d %d %d %d %d %d %d %d %d %d \n", i, j, buffer1[0] , buffer1[1], buffer1[2], buffer1[3], coeff[0], coeff[1], coeff[2], coeff[3], dstU[0]);
-                        
-#if SCALED_REF_LAYER_OFFSETS
-                        // Only increase the x position of reference upsample picture when within the window
-                        // "-2" to ensure that pointer doesn't go beyond the boundary rightEndC-1
-                        if( (i >= leftStartC) && (i <= rightEndC-2) )
-                        {
-                            srcU1++;
-                            srcV1++;
-                        }
-#else
-                        srcU1++;
+                memcpy(buffer+4, srcV, widthBL-refPos);
+                memset(buffer+(widthBL-refPos)+4, srcV[widthBL-refPos-1], 4-(widthBL-refPos));
+                *dstU1 = CroHor_FILTER(buffer, coeff);
+                *dstV1 = CroHor_FILTER((buffer+4), coeff);
+        	} else {
+        		*dstU1 = CroHor_FILTER(srcU, coeff);
+        		*dstV1 = CroHor_FILTER(srcV, coeff);
+        	}
+
+        	srcU += strideBL;
+            srcV += strideBL;
+            dstU1 += widthEL;
+            dstV1 += widthEL;
+        	}
+    	}
+
+        for( j = 0; j < heightEL; j++ )	{
+        	int y = av_clip_c(j, topStartC, bottomEndC - 1);
+        	refPos16 = (((y - topStartC)*up_info->scaleYCr + up_info->addYCr) >> 12) - 4;
+        	phase    = refPos16 & 15;
+            refPos   = refPos16 >> 4;
+            coeff = enabled_up_sample_filter_chroma[phase];
+            refPos -= ((NTAPS_CHROMA>>1) - 1);
+            srcU1 = tempBufU  + refPos *widthEL;
+            srcV1 = tempBufV  + refPos *widthEL;
+            dstU = dstBufU + j*strideEL;
+            dstV = dstBufV + j*strideEL;
+            for( i = 0; i < widthEL; i++ )	{
+            	if(refPos < 0) {
+            		for(k= 0; k<-refPos ; k++){
+            			buffer1[k] = srcU1[(-refPos)*widthEL];
+            			buffer1[k+4] = srcV1[(-refPos)*widthEL];
+            		}
+                    for(k= 0; k<4+refPos ; k++){
+                    	buffer1[-refPos+k] = srcU1[(-refPos+k)*widthEL];
+                    	buffer1[-refPos+k+4] = srcV1[(-refPos+k)*widthEL];
+                    }
+                    dstU = av_clip_pixel( (CroVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
+                    dstV = av_clip_pixel( (CroVer_FILTER((buffer1+4), coeff) + iOffset) >> (nShift));
+            	} else if(refPos+4 > heightEL ) {
+            		for(k= 0; k< heightBL-refPos ; k++) {
+            			buffer1[k] = srcU1[k*widthEL];
+                        buffer1[k+4] = srcV1[k*widthEL];
+            		}
+                    for(k= 0; k<4-(heightEL-refPos) ; k++) {
+                    	buffer1[heightEL-refPos+k] = srcU1[(heightBL-refPos-1)*widthEL];
+                    	buffer1[heightEL-refPos+k+4] = srcV1[(heightBL-refPos-1)*widthEL];
+                    }
+                    dstU = av_clip_pixel( (CroVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
+                    dstV = av_clip_pixel( (CroVer_FILTER((buffer1+4), coeff) + iOffset) >> (nShift));
+                	} else {
+                		dstU = av_clip_pixel( (CroVer_FILTER1(srcU1, coeff, widthEL) + iOffset) >> (nShift));
+                		dstV = av_clip_pixel( (CroVer_FILTER1((srcV1+4), coeff, widthEL) + iOffset) >> (nShift));
+                	}
+
+
+            		if( (i >= leftStartC) && (i <= rightEndC-2) )	{
+            			srcU1++;
                         srcV1++;
-#endif
-                        dstU++;
-                        dstV++;
+            		}
+            		dstU++;
+            		dstV++;
                     }
             }
-    }
-  //  printf("Exit ");
-   // exit(-1);
-//printf("widthEL: %d heightEL: %d widthBL: %d heightBL: %d \n",widthEL, heightEL, widthBL, heightBL );
-  //  widthEL   = (FrameEL->width >>1);
-   // heightEL  = FrameEL->height>>1;
-   // strideEL = FrameEL->linesize[1];
- // printf("widthEL --- : %d heightEL: %d widthBL: %d heightBL: %d \n",widthEL, heightEL, widthBL, strideEL );
-//    exit(-1);
-   // dstY = dstBufY + j * strideEL;
-  //  dstU = dstBufV;
-  //  for(i =0; i< heightEL; i++){
-   //     for(j =0; j<  widthEL ; j++)
-    //        printf("%d ",  dstU[j]);
-  //  dstU += strideEL;
-   //         printf("\n");
-    //    }
-  //  printf("widthEL --- : %d heightEL: %d widthBL: %d heightBL: %d \n",widthEL, heightEL, widthBL, strideEL );
-   // exit(-1);
+
 }
 
 
