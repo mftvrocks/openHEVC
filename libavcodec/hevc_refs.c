@@ -193,7 +193,7 @@ int ff_hevc_find_display(HEVCContext *s, AVFrame *out, int flush, int* poc_displ
 #ifdef SVC_EXTENSION
             if ((frame->flags & HEVC_FRAME_FLAG_OUTPUT) &&
 
-            	 frame->sequence == sc->seq_output && !frame->up_sample_base) {
+            	 frame->sequence == sc->seq_output /*&& !frame->up_sample_base*/) {
 #else
                 if ((frame->flags & HEVC_FRAME_FLAG_OUTPUT) &&
                     frame->sequence == sc->seq_output) {
@@ -279,6 +279,7 @@ static void scale_upsampled_mv_field(HEVCContext *s) {
     HEVCFrame  *refBL, *refEL;
     HEVCSharedContext *sc = s->HEVCsc;
     int pic_width_in_min_pu = sc->sps->pic_width_in_luma_samples>>sc->sps->log2_min_pu_size;
+    int pic_height_in_min_pu = sc->sps->pic_height_in_luma_samples>>sc->sps->log2_min_pu_size;
     int pic_width_in_min_puBL = ((HEVCContext*)s->avctx->priv_data)->HEVCsc->sps->pic_width_in_luma_samples>> ((HEVCContext*)s->avctx->priv_data)->HEVCsc->sps->log2_min_pu_size;
     refBL = &((HEVCContext*)s->avctx->priv_data)->HEVCsc->DPB[find_ref_idx(s->avctx->priv_data, s->HEVCsc->poc)];
     refEL = &s->HEVCsc->DPB[find_upsample_ref_idx( s,  s->HEVCsc->poc)];
@@ -331,7 +332,7 @@ static void scale_upsampled_mv_field(HEVCContext *s) {
             }
             for(i =0; i < 4; i++)
             for(j =0; j < 4; j++)   {
-               if(i || j) {
+               if((i || j) && (yELIndex+i)<pic_height_in_min_pu && (xELIndex+j)<pic_width_in_min_pu) {
                    refEL->tab_mvf[((yELIndex+i) *pic_width_in_min_pu)+xELIndex+j].is_intra = refEL->tab_mvf[yELIndex*pic_width_in_min_pu+xELIndex].is_intra;
                    for(list=0; list < 2; list++) {
                         refEL->tab_mvf[((yELIndex+i) *pic_width_in_min_pu)+xELIndex+j].mv[list].x  = refEL->tab_mvf[yELIndex*pic_width_in_min_pu+xELIndex].mv[list].x;

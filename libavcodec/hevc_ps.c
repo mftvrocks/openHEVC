@@ -536,7 +536,6 @@ int ff_hevc_decode_nal_vps(HEVCContext *s)
         }
     }
     vps->vps_extension_flag = get_bits1(gb);
-    printf("vps->vps_extension_flag %d \n", vps->vps_extension_flag);
 #ifdef VPS_EXTENSION
     if(vps->vps_extension_flag){ /* vps_extension_flag */
         parse_vps_extension(s, vps);
