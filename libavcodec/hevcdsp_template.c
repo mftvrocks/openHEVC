@@ -5321,10 +5321,6 @@ static void FUNC(hevc_loop_filter_chroma)(uint8_t *_pix, ptrdiff_t _xstride, ptr
 
 
 
-
-
-
-
 #ifdef SVC_EXTENSION
 #define LumHor_FILTER(pel, coeff) \
 (pel[0]*coeff[0] + pel[1]*coeff[1] + pel[2]*coeff[2] + coeff[3]*pel[3] + pel[4]*coeff[4] + pel[5]*coeff[5] + pel[6]*coeff[6] + pel[7]*coeff[7])

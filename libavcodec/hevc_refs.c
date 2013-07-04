@@ -193,7 +193,7 @@ int ff_hevc_find_display(HEVCContext *s, AVFrame *out, int flush, int* poc_displ
 #ifdef SVC_EXTENSION
 
             if ((frame->flags & HEVC_FRAME_FLAG_OUTPUT) &&
-            	 frame->sequence == sc->seq_output && s->id) {
+            	 frame->sequence == sc->seq_output /*&& s->id*/) {
 #else
                 if ((frame->flags & HEVC_FRAME_FLAG_OUTPUT) &&
                     frame->sequence == sc->seq_output) {
