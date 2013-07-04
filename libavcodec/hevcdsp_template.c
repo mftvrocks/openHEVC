@@ -5476,7 +5476,9 @@ static void FUNC(upsample_base_layer_frame)(AVFrame *FrameEL, AVFrame *FrameBL, 
     widthEL   = FrameEL->width >> 1;
     heightEL  = FrameEL->height >> 1;
     widthBL   = FrameBL->width >> 1;
-    heightBL  = FrameBL->height <= heightEL ? FrameBL->height:heightEL;
+    heightBL  = FrameBL->height > heightEL ? FrameBL->height:heightEL;
+
+
     heightBL >>= 1;
 
         //========== horizontal upsampling ===========
@@ -5486,18 +5488,22 @@ static void FUNC(upsample_base_layer_frame)(AVFrame *FrameEL, AVFrame *FrameBL, 
         phase    = refPos16 & 15;
         refPos   = refPos16 >> 4;
         coeff = enabled_up_sample_filter_chroma[phase];
+
         refPos -= ((NTAPS_CHROMA>>1) - 1);
         srcU = srcBufU + refPos; // -((NTAPS_CHROMA>>1) - 1);
         srcV = srcBufV + refPos; // -((NTAPS_CHROMA>>1) - 1);
         dstU1 = tempBufU + i;
         dstV1 = tempBufV + i;
+
         for( j = 0; j < heightBL ; j++ )	{
         	if(refPos < 0) {
         		memset(buffer, srcU[-refPos], -refPos);
                 memcpy(buffer-refPos, srcU-refPos, 4+refPos);
                 memset(buffer+4, srcV[-refPos], -refPos);
                 memcpy(buffer-refPos+4, srcV-refPos, 4+refPos);
+
                 *dstU1 = CroHor_FILTER(buffer, coeff);
+
                 *dstV1 = CroHor_FILTER((buffer+4), coeff);
         	} else if(refPos+4 > widthBL ) {
         		memcpy(buffer, srcU, widthBL-refPos);
@@ -5505,10 +5511,14 @@ static void FUNC(upsample_base_layer_frame)(AVFrame *FrameEL, AVFrame *FrameBL, 
 
                 memcpy(buffer+4, srcV, widthBL-refPos);
                 memset(buffer+(widthBL-refPos)+4, srcV[widthBL-refPos-1], 4-(widthBL-refPos));
+
                 *dstU1 = CroHor_FILTER(buffer, coeff);
+
                 *dstV1 = CroHor_FILTER((buffer+4), coeff);
         	} else {
+
         		*dstU1 = CroHor_FILTER(srcU, coeff);
+
         		*dstV1 = CroHor_FILTER(srcV, coeff);
         	}
 
@@ -5517,8 +5527,7 @@ static void FUNC(upsample_base_layer_frame)(AVFrame *FrameEL, AVFrame *FrameBL, 
             dstU1 += widthEL;
             dstV1 += widthEL;
         	}
-    	}
-
+    }
         for( j = 0; j < heightEL; j++ )	{
         	int y = av_clip_c(j, topStartC, bottomEndC - 1);
         	refPos16 = (((y - topStartC)*up_info->scaleYCr + up_info->addYCr) >> 12) - 4;
@@ -5540,22 +5549,26 @@ static void FUNC(upsample_base_layer_frame)(AVFrame *FrameEL, AVFrame *FrameBL, 
                     	buffer1[-refPos+k] = srcU1[(-refPos+k)*widthEL];
                     	buffer1[-refPos+k+4] = srcV1[(-refPos+k)*widthEL];
                     }
-                    dstU = av_clip_pixel( (CroVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
-                    dstV = av_clip_pixel( (CroVer_FILTER((buffer1+4), coeff) + iOffset) >> (nShift));
-            	} else if(refPos+4 > heightEL ) {
+                    *dstU = av_clip_pixel( (CroVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
+                    *dstV = av_clip_pixel( (CroVer_FILTER((buffer1+4), coeff) + iOffset) >> (nShift));
+            	} else if(refPos+4 > heightBL ) {
             		for(k= 0; k< heightBL-refPos ; k++) {
             			buffer1[k] = srcU1[k*widthEL];
                         buffer1[k+4] = srcV1[k*widthEL];
             		}
-                    for(k= 0; k<4-(heightEL-refPos) ; k++) {
-                    	buffer1[heightEL-refPos+k] = srcU1[(heightBL-refPos-1)*widthEL];
-                    	buffer1[heightEL-refPos+k+4] = srcV1[(heightBL-refPos-1)*widthEL];
+                    for(k= 0; k<4-(heightBL-refPos) ; k++) {
+                    	buffer1[heightBL-refPos+k] = srcU1[(heightBL-refPos-1)*widthEL];
+                    	buffer1[heightBL-refPos+k+4] = srcV1[(heightBL-refPos-1)*widthEL];
                     }
-                    dstU = av_clip_pixel( (CroVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
-                    dstV = av_clip_pixel( (CroVer_FILTER((buffer1+4), coeff) + iOffset) >> (nShift));
+                    *dstU = av_clip_pixel( (CroVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
+
+
+                    	*dstV = av_clip_pixel( (CroVer_FILTER((buffer1+4), coeff) + iOffset) >> (nShift));
                 	} else {
-                		dstU = av_clip_pixel( (CroVer_FILTER1(srcU1, coeff, widthEL) + iOffset) >> (nShift));
-                		dstV = av_clip_pixel( (CroVer_FILTER1((srcV1+4), coeff, widthEL) + iOffset) >> (nShift));
+                		*dstU = av_clip_pixel( (CroVer_FILTER1(srcU1, coeff, widthEL) + iOffset) >> (nShift));
+
+
+                		*dstV = av_clip_pixel( (CroVer_FILTER1(srcV1, coeff, widthEL) + iOffset) >> (nShift));
                 	}
 
 
@@ -5567,7 +5580,6 @@ static void FUNC(upsample_base_layer_frame)(AVFrame *FrameEL, AVFrame *FrameBL, 
             		dstV++;
                     }
             }
-
 }
 
 

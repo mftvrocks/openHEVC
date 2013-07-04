@@ -191,9 +191,9 @@ int ff_hevc_find_display(HEVCContext *s, AVFrame *out, int flush, int* poc_displ
         for (i = 0; i < FF_ARRAY_ELEMS(sc->DPB); i++) {
             HEVCFrame *frame = &sc->DPB[i];
 #ifdef SVC_EXTENSION
-            if ((frame->flags & HEVC_FRAME_FLAG_OUTPUT) &&
 
-            	 frame->sequence == sc->seq_output /*&& !frame->up_sample_base*/) {
+            if ((frame->flags & HEVC_FRAME_FLAG_OUTPUT) &&
+            	 frame->sequence == sc->seq_output && s->id) {
 #else
                 if ((frame->flags & HEVC_FRAME_FLAG_OUTPUT) &&
                     frame->sequence == sc->seq_output) {
@@ -217,7 +217,6 @@ int ff_hevc_find_display(HEVCContext *s, AVFrame *out, int flush, int* poc_displ
 #endif
 //            av_log(s->avctx, AV_LOG_INFO, "Display : POC %d\n", min_poc);
             HEVCFrame *frame = &sc->DPB[min_idx];
-
             frame->flags &= ~HEVC_FRAME_FLAG_OUTPUT;
             *poc_display = frame->poc;
             frame->frame->display_picture_number = frame->poc;

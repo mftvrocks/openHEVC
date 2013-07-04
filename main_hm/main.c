@@ -72,11 +72,13 @@ static void video_decode_example(const char *filename)
     buf = calloc ( 1000000, sizeof(char));
     while(!stop) {
 //    	printf("-------------- stop %d %d \n", stop, nbFrame);
-        if (libOpenHevcDecode(openHevcHandle, buf, !feof(f) ? get_next_nal(f, buf) : 0, pts++)) {
+    	int flag = libOpenHevcDecode(openHevcHandle, buf, !feof(f) ? get_next_nal(f, buf) : 0, pts++);
+    //	printf("flag %d \n", flag);
+        if (flag) {
 
         	fflush(stdout);
            libOpenHevcGetPictureSize2(openHevcHandle, &openHevcFrame.frameInfo);
-        //    printf("openHevcFrame.frameInfo.nWidth ----------------- %d \n", openHevcFrame.frameInfo.nWidth);
+      //     printf("openHevcFrame.frameInfo.nWidth ----------------- %d \n", openHevcFrame.frameInfo.nWidth);
            // if(openHevcFrame.frameInfo.nWidth == 1920) {
             if (init == 1 ) {
                 libOpenHevcGetPictureSize2(openHevcHandle, &openHevcFrame.frameInfo);
@@ -101,31 +103,21 @@ static void video_decode_example(const char *filename)
                         openHevcFrame.pvY, openHevcFrame.pvU, openHevcFrame.pvV);
             }
             
-        //    libOpenHevcGetPictureSize2(openHevcHandle, &openHevcFrame.frameInfo);
-          //  printf("openHevcFrame.frameInfo.nWidth ----------------- %d \n", openHevcFrame.frameInfo.nWidth);
-            //    if(openHevcFrame.frameInfo.nWidth == 1920) {
-           if (fout /*&& openHevcFrame.frameInfo.nWidth == 1920*/) {
-                int nbData = openHevcFrameCpy.frameInfo.nWidth * openHevcFrameCpy.frameInfo.nHeight;
+
+           if (fout ) {
+        	      int nbData = openHevcFrameCpy.frameInfo.nWidth * openHevcFrameCpy.frameInfo.nHeight;
+
                 libOpenHevcGetOutputCpy(openHevcHandle, 1, &openHevcFrameCpy);
-                uint8_t *piDstBufY = openHevcFrameCpy.pvU;
-                /*for(int i=0; i < (nbData / 4)/(openHevcFrame.frameInfo.nWidth/2); i++){
-                    for(int j=0; j < (openHevcFrameCpy.frameInfo.nWidth/2); j++){
-                        printf(" %d ", piDstBufY[j]);
-                    }
-                    piDstBufY += (openHevcFrameCpy.frameInfo.nWidth/2);
-                    printf("  \n");
-                }
-                printf("Upsample the base layer ok. \n");
-                exit(-1);
-*/
+                 uint8_t *piDstBufY = openHevcFrameCpy.pvU;
+
                 fwrite( openHevcFrameCpy.pvY , sizeof(uint8_t) , nbData    , fout);
+
                 fwrite( openHevcFrameCpy.pvU , sizeof(uint8_t) , nbData / 4, fout);
                 fwrite( openHevcFrameCpy.pvV , sizeof(uint8_t) , nbData / 4, fout);
-             
+
             }
             nbFrame++;
-          //  }
-         //   }
+
         } else if (feof(f) && nbFrame)
             stop = 1;
     }
