@@ -94,7 +94,14 @@ void libOpenHevcGetPictureInfo(OpenHevc_Handle openHevcHandle, OpenHevc_FrameInf
     openHevcFrameInfo->display_picture_number = picture->display_picture_number;
     openHevcFrameInfo->flag       = 0; //progressive, interlaced, interlaced top field first, interlaced bottom field first.
     openHevcFrameInfo->nTimeStamp = picture->pts;
+
 }
+void libOpenHevcGetBitRateInfo(OpenHevc_Handle openHevcHandle, unsigned int *bitrateBL, unsigned int *bitrateEL) {
+	OpenHevcWrapperContext * openHevcContext = (OpenHevcWrapperContext *) openHevcHandle;
+	*bitrateBL = ((HEVCContext*)openHevcContext->c->priv_data)->bitrateBL;
+	*bitrateEL = ((HEVCContext*)openHevcContext->c->priv_data)->bitrateEL;
+}
+
 
 void libOpenHevcGetPictureSize2(OpenHevc_Handle openHevcHandle, OpenHevc_FrameInfo *openHevcFrameInfo)
 {
@@ -112,6 +119,7 @@ int libOpenHevcGetOutput(OpenHevc_Handle openHevcHandle, int got_picture, OpenHe
         openHevcFrame->pvY       = (void *) openHevcContext->picture->data[0];
         openHevcFrame->pvU       = (void *) openHevcContext->picture->data[1];
         openHevcFrame->pvV       = (void *) openHevcContext->picture->data[2];
+        openHevcFrame->frameInfo.layer_id = openHevcContext->picture->quality;
         libOpenHevcGetPictureInfo(openHevcHandle, &openHevcFrame->frameInfo);
     }
     return 1;

@@ -53,6 +53,8 @@ static void video_decode_example(const char *filename)
     int stop    = 0;
     unsigned int width, height, stride;
     unsigned char * buf;
+    unsigned int bitrateBL, bitrateEL;
+
     OpenHevc_Frame openHevcFrame;
     OpenHevc_Frame_cpy openHevcFrameCpy;
     OpenHevc_Handle openHevcHandle = libOpenHevcInit(nb_pthreads);
@@ -71,15 +73,10 @@ static void video_decode_example(const char *filename)
     }
     buf = calloc ( 1000000, sizeof(char));
     while(!stop) {
-//    	printf("-------------- stop %d %d \n", stop, nbFrame);
     	int flag = libOpenHevcDecode(openHevcHandle, buf, !feof(f) ? get_next_nal(f, buf) : 0, pts++);
-    //	printf("flag %d \n", flag);
         if (flag) {
 
         	fflush(stdout);
-           libOpenHevcGetPictureSize2(openHevcHandle, &openHevcFrame.frameInfo);
-      //     printf("openHevcFrame.frameInfo.nWidth ----------------- %d \n", openHevcFrame.frameInfo.nWidth);
-           // if(openHevcFrame.frameInfo.nWidth == 1920) {
             if (init == 1 ) {
                 libOpenHevcGetPictureSize2(openHevcHandle, &openHevcFrame.frameInfo);
                 if (display_flags == DISPLAY_ENABLE) {
@@ -99,6 +96,7 @@ static void video_decode_example(const char *filename)
             if (display_flags == DISPLAY_ENABLE) {
                 libOpenHevcGetOutput(openHevcHandle, 1, &openHevcFrame);
                 libOpenHevcGetPictureSize2(openHevcHandle, &openHevcFrame.frameInfo);
+                if(openHevcFrame.frameInfo.layer_id == 0)
                 SDL_Display((openHevcFrame.frameInfo.nYPitch - openHevcFrame.frameInfo.nWidth)/2, openHevcFrame.frameInfo.nWidth, openHevcFrame.frameInfo.nHeight,
                         openHevcFrame.pvY, openHevcFrame.pvU, openHevcFrame.pvV);
             }
@@ -128,8 +126,12 @@ static void video_decode_example(const char *filename)
         fclose(fout);
     }
 //    printf("video size : %d x %d\n", openHevcFrame.frameInfo.nWidth, openHevcFrame.frameInfo.nHeight);
+
+    libOpenHevcGetBitRateInfo(openHevcHandle, &bitrateBL, &bitrateEL);
+    printf("Base layer size %d Enhancement layer size %d \n", bitrateBL, bitrateEL);
     libOpenHevcClose(openHevcHandle);
     printf("nbFrame : %d\n", nbFrame);
+
 }
 
 

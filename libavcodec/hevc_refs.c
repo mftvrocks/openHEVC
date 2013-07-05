@@ -42,7 +42,6 @@ static int find_ref_idx(HEVCContext *s, int poc)
     return 0;
 }
 #ifdef SVC_EXTENSION
-
 static int find_upsample_ref_idx(HEVCContext *s, int poc)
 {
     int i;
@@ -58,8 +57,6 @@ static int find_upsample_ref_idx(HEVCContext *s, int poc)
            "Could not find ref with POC %d\n", poc);
     return 0;
 }
-
-
 void ff_unref_upsampled_frame(HEVCSharedContext *s){
 	int i;
     for (i = 0; i < FF_ARRAY_ELEMS(s->DPB); i++) {
@@ -128,7 +125,6 @@ void ff_hevc_clean_refs(HEVCContext *s)
         ref->flags = 0;
     }
 }
-
 int ff_hevc_find_next_ref(HEVCContext *s, int poc)
 {
     int i;
@@ -163,6 +159,7 @@ int ff_hevc_set_new_ref(HEVCContext *s, AVFrame **frame, int poc)
             s->HEVCsc->ref     = ref;
             ref->poc   = poc;
             ref->frame->pts = s->HEVCsc->pts;
+            ref->frame->quality = s->id;
 #ifdef SVC_EXTENSION
             ref->up_sample_base = up_sample; 
 #endif
@@ -198,7 +195,6 @@ int ff_hevc_find_display(HEVCContext *s, AVFrame *out, int flush, int* poc_displ
                 if ((frame->flags & HEVC_FRAME_FLAG_OUTPUT) &&
                     frame->sequence == sc->seq_output) {
 #endif
-
                 nb_output++;
                 if (frame->poc < min_poc) {
                     min_poc = frame->poc;

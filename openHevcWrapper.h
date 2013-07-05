@@ -29,6 +29,7 @@ typedef struct OpenHevc_FrameInfo
    int         display_picture_number;
    int         flag; //progressive, interlaced, interlaced top field first, interlaced bottom field first.
    int64_t     nTimeStamp;
+   int         layer_id;
 } OpenHevc_FrameInfo;
 
 typedef struct OpenHevc_Frame
@@ -57,7 +58,7 @@ void libOpenHevcSetCheckMD5(OpenHevc_Handle openHevcHandle, int val);
 void libOpenHevcClose(OpenHevc_Handle openHevcHandle);
 void libOpenHevcFlush(OpenHevc_Handle openHevcHandle);
 const char *libOpenHevcVersion(OpenHevc_Handle openHevcHandle);
-
+void libOpenHevcGetBitRateInfo(OpenHevc_Handle openHevcHandle, unsigned int *bitrateBL, unsigned int *bitrateEL);
 #ifdef __cplusplus
 }
 #endif

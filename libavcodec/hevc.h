@@ -60,7 +60,7 @@
  */
 
 #define SVC_EXTENSION
-        
+#define BITRATE 	1
 #ifdef SVC_EXTENSION
 #define VPS_EXTENSION
 #define SCALED_REF_LAYER_OFFSETS 1
@@ -978,8 +978,14 @@ typedef struct HEVCContext {
     HEVCLocalContext    *HEVClc;
     uint8_t             threads_number;
     int                 decode_checksum_sei;
-    int id; 
-#ifdef SVC_EXTENSION
+    int id;
+#if BITRATE
+    unsigned int bitrateBL;
+    unsigned int bitrateEL;
+#endif
+
+    #ifdef SVC_EXTENSION
+
     struct HEVCContext  *SHCVDecoder;
 #endif
 
