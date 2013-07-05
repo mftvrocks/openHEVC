@@ -4098,83 +4098,6 @@ static void FUNC(sao_edge_filter_wpp_3)(uint8_t *_dst, uint8_t *_src, ptrdiff_t 
     }
 }
 
-/*
-static void FUNC(sao_edge_filter_wpp_2)(uint8_t *_dst, uint8_t *_src, ptrdiff_t _stride, struct SAOParams *sao,int *borders, int _width, int _height, int c_idx)
-{
-    int x, y;
-    uint8_t *dst = _dst;   // put here pixel
-    uint8_t *src = _src;
-    ptrdiff_t stride = _stride;
-    int chroma = c_idx!=0;
-    //struct SAOParams *sao;
-    int *sao_offset_val = sao->offset_val[c_idx];
-    int sao_eo_class = sao->eo_class[c_idx];
-
-    const int8_t pos[4][2][2] = {
-        { { -1,  0 }, {  1, 0 } }, // horizontal
-        { {  0, -1 }, {  0, 1 } }, // vertical
-        { { -1, -1 }, {  1, 1 } }, // 45 degree
-        { {  1, -1 }, { -1, 1 } }, // 135 degree
-    };
-    const uint8_t edge_idx[] = { 1, 2, 0, 3, 4 };
-
-    int init_x = 0, init_y = 0, width = _width, height = _height;
-
-#define CMP(a, b) ((a) > (b) ? 1 : ((a) == (b) ? 0 : -1))
-
-
-            init_x = -(8>>chroma)-2;
-            width = (8>>chroma)+2;
-            if(!borders[3])
-                height -= ((4>>chroma)+2);
-
-    dst = dst + (init_y*_stride + init_x);
-    src = src + (init_y*_stride + init_x);
-    init_y = init_x = 0;
-
-    if (sao_eo_class != SAO_EO_HORIZ) {
-        if (borders[1]){
-            int offset_val = sao_offset_val[0];
-            for (x = init_x; x < width; x++) {
-                dst[x] = av_clip_pixel(src[x] + offset_val);
-            }
-            init_y = 1;
-        }
-        if (borders[3]){
-            int offset_val = sao_offset_val[0];
-            int y_stride   = stride * (_height-1);
-            for (x = init_x; x < width; x++) {
-                dst[x + y_stride] = av_clip_pixel(src[x + y_stride] + offset_val);
-            }
-            height--;
-        }
-    }
-    {
-        int y_stride     = init_y * stride;
-        int pos_0_0      = pos[sao_eo_class][0][0];
-        int pos_0_1      = pos[sao_eo_class][0][1];
-        int pos_1_0      = pos[sao_eo_class][1][0];
-        int pos_1_1      = pos[sao_eo_class][1][1];
-
-        int y_stride_0_1 = (init_y + pos_0_1) * stride;
-        int y_stride_1_1 = (init_y + pos_1_1) * stride;
-        for (y = init_y; y < height; y++) {
-            for (x = init_x; x < width; x++) {
-                int diff0         = CMP(src[x + y_stride], src[x + pos_0_0 + y_stride_0_1]);
-                int diff1         = CMP(src[x + y_stride], src[x + pos_1_0 + y_stride_1_1]);
-                int offset_val    = edge_idx[2 + diff0 + diff1];
-                dst[x + y_stride] = av_clip_pixel(src[x + y_stride] + sao_offset_val[offset_val]);
-            }
-            y_stride     += stride;
-            y_stride_0_1 += stride;
-            y_stride_1_1 += stride;
-        }
-    }
-#undef CMP
-}*/
-
-
-
 static void FUNC(sao_band_filter)(uint8_t * _dst, uint8_t *_src, ptrdiff_t _stride, int *sao_offset_val,
                                   int sao_left_class, int width, int height)
 {
@@ -5497,7 +5420,7 @@ static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptr
 	pixel *pix = (pixel*)_pix;
 	ptrdiff_t xstride = 1;
 	ptrdiff_t ystride = _ystride/sizeof(pixel);
-	__m128i l0, l1, l3, t1, t2, m0,m1,m2,m3,tcr,fp0,fp1,fp2;
+	__m128i l0, l1, l3, t1, t2, m0,m1,m2,m3,tcr,fp0,fp1,fp2,r0,r1,r2,r3;
 	uint8_t tab[16];
 	uint8_t tab2[16];
 	uint8_t tab3[16];
@@ -5538,14 +5461,14 @@ static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptr
 		l1= _mm_hadd_epi16(l1,_mm_setzero_si128());
 		l1= _mm_or_si128(l1,_mm_slli_epi16(_mm_slli_si128(t2,8),1));
 
-		l1= _mm_cmplt_epi16(l1,_mm_set_epi16(1,1,beta_2,beta_2,tc25,beta_3,tc25,beta_3));
+		l3= _mm_cmplt_epi16(l1,_mm_set_epi16(1,1,beta_2,beta_2,tc25,beta_3,tc25,beta_3));
+		l1= _mm_unpacklo_epi64(_mm_loadl_epi64((__m128i*)(pix - 4 + ystride)),_mm_loadl_epi64((__m128i*)(pix - 4 + 2*ystride)));	//contains lines 1 and 2
+		const int tc2 = tc << 1;
+		tcr= _mm_set1_epi16(tc2);
 
-
-		if(_mm_test_all_ones(l1)) {
+		if(_mm_test_all_ones(l3)) {
 			// strong filtering
-			const int tc2 = tc << 1;
-			tcr= _mm_set1_epi16(tc2);
-			l1= _mm_unpacklo_epi64(_mm_loadl_epi64((__m128i*)(pix - 4 + ystride)),_mm_loadl_epi64((__m128i*)(pix - 4 + 2*ystride)));	//contains lines 1 and 2
+
 
 			if(!no_p) {
 				//p0
@@ -5574,22 +5497,9 @@ static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptr
 				m1= _mm_unpacklo_epi16(m1,m3);//contains p0 values of lines 0,3,1,2
 
 				m3= _mm_add_epi16(tcr,m1);
-
-
-				t1= _mm_sub_epi16(m0,m3);
-				t1= _mm_cmpgt_epi16(t1,_mm_setzero_si128());
-				m0= _mm_andnot_si128(t1,m0);
-				m3= _mm_and_si128(t1,m3);
-				m0= _mm_or_si128(m0,m3);
-
-				m3= _mm_subs_epi16(m1,tcr);
-
-
-				t1= _mm_sub_epi16(m0,m3);
-				t1= _mm_cmplt_epi16(t1,_mm_setzero_si128());
-				m0= _mm_andnot_si128(t1,m0);
-				m3= _mm_and_si128(t1,m3);
-				fp0= _mm_or_si128(m0,m3);
+				t1= _mm_subs_epi16(m1,tcr);
+				m2= _mm_min_epi16(m0,m3);
+				fp0= _mm_max_epi16(t1,m2);
 
 				//P1
 
@@ -5615,23 +5525,9 @@ static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptr
 				m1= _mm_unpacklo_epi16(m1,m3);//contains p1 values of lines 0,3,1,2
 
 				m3= _mm_add_epi16(tcr,m1);
-
-
-				t1= _mm_sub_epi16(m0,m3);
-				t1= _mm_cmpgt_epi16(t1,_mm_setzero_si128());
-				m0= _mm_andnot_si128(t1,m0);
-				m3= _mm_and_si128(t1,m3);
-				m0= _mm_or_si128(m0,m3);
-
-
-				m3= _mm_subs_epi16(m1,tcr);
-
-
-				t1= _mm_sub_epi16(m0,m3);
-				t1= _mm_cmplt_epi16(t1,_mm_setzero_si128());
-				m0= _mm_andnot_si128(t1,m0);
-				m3= _mm_and_si128(t1,m3);
-				fp1= _mm_or_si128(m0,m3);
+				t1= _mm_subs_epi16(m1,tcr);
+				m2= _mm_min_epi16(m0,m3);
+				fp1= _mm_max_epi16(t1,m2);
 
 
 				//P2
@@ -5661,22 +5557,9 @@ static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptr
 				m1= _mm_unpacklo_epi16(m1,m3);//contains p0 values of lines 0,3,1,2
 
 				m3= _mm_add_epi16(tcr,m1);
-
-
-				t1= _mm_sub_epi16(m0,m3);
-				t1= _mm_cmpgt_epi16(t1,_mm_setzero_si128());
-				m0= _mm_andnot_si128(t1,m0);
-				m3= _mm_and_si128(t1,m3);
-				m0= _mm_or_si128(m0,m3);
-
-				m3= _mm_subs_epi16(m1,tcr);
-
-
-				t1= _mm_sub_epi16(m0,m3);
-				t1= _mm_cmplt_epi16(t1,_mm_setzero_si128());
-				m0= _mm_andnot_si128(t1,m0);
-				m3= _mm_and_si128(t1,m3);
-				fp2= _mm_or_si128(m0,m3); //m0 contains final P2.
+				t1= _mm_subs_epi16(m1,tcr);
+				m2= _mm_min_epi16(m0,m3);
+				fp2= _mm_max_epi16(t1,m2);
 
 
 				fp0= _mm_unpacklo_epi16(fp2,fp0);
@@ -5721,23 +5604,9 @@ static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptr
 				m1= _mm_unpacklo_epi16(m1,m3);//contains p0 values of lines 0,3,1,2
 
 				m3= _mm_add_epi16(tcr,m1);
-
-
-				t1= _mm_sub_epi16(m0,m3);
-				t1= _mm_cmpgt_epi16(t1,_mm_setzero_si128());
-				m0= _mm_andnot_si128(t1,m0);
-				m3= _mm_and_si128(t1,m3);
-				m0= _mm_or_si128(m0,m3);
-
-
-				m3= _mm_subs_epi16(m1,tcr);
-
-
-				t1= _mm_sub_epi16(m0,m3);
-				t1= _mm_cmplt_epi16(t1,_mm_setzero_si128());
-				m0= _mm_andnot_si128(t1,m0);
-				m3= _mm_and_si128(t1,m3);
-				fp2= _mm_or_si128(m0,m3);
+				t1= _mm_subs_epi16(m1,tcr);
+				m2= _mm_min_epi16(m0,m3);
+				fp2= _mm_max_epi16(t1,m2);
 
 
 
@@ -5768,23 +5637,9 @@ static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptr
 				m1= _mm_unpacklo_epi16(m1,m3);//contains p1 values of lines 0,3,1,2
 
 				m3= _mm_add_epi16(tcr,m1);
-
-
-				t1= _mm_sub_epi16(m0,m3);
-				t1= _mm_cmpgt_epi16(t1,_mm_setzero_si128());
-				m0= _mm_andnot_si128(t1,m0);
-				m3= _mm_and_si128(t1,m3);
-				m0= _mm_or_si128(m0,m3);
-
-
-				m3= _mm_subs_epi16(m1,tcr);
-
-
-				t1= _mm_sub_epi16(m0,m3);
-				t1= _mm_cmplt_epi16(t1,_mm_setzero_si128());
-				m0= _mm_andnot_si128(t1,m0);
-				m3= _mm_and_si128(t1,m3);
-				fp1= _mm_or_si128(m0,m3);
+				t1= _mm_subs_epi16(m1,tcr);
+				m2= _mm_min_epi16(m0,m3);
+				fp1= _mm_max_epi16(t1,m2);
 
 				//Q2
 
@@ -5816,23 +5671,9 @@ static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptr
 				m1= _mm_unpacklo_epi16(m1,m3);//contains p0 values of lines 0,3,1,2
 
 				m3= _mm_add_epi16(tcr,m1);
-
-
-				t1= _mm_sub_epi16(m0,m3);
-				t1= _mm_cmpgt_epi16(t1,_mm_setzero_si128());
-				m0= _mm_andnot_si128(t1,m0);
-				m3= _mm_and_si128(t1,m3);
-				m0= _mm_or_si128(m0,m3);
-
-
-				m3= _mm_subs_epi16(m1,tcr);
-
-
-				t1= _mm_sub_epi16(m0,m3);
-				t1= _mm_cmplt_epi16(t1,_mm_setzero_si128());
-				m0= _mm_andnot_si128(t1,m0);
-				m3= _mm_and_si128(t1,m3);
-				fp0= _mm_or_si128(m0,m3);
+				t1= _mm_subs_epi16(m1,tcr);
+				m2= _mm_min_epi16(m0,m3);
+				fp0= _mm_max_epi16(t1,m2);
 
 
 				fp0= _mm_unpacklo_epi16(fp2,fp0);
@@ -5862,6 +5703,197 @@ static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptr
                 nd_p = 2;
             if (dq0 + dq3 < ((beta+(beta>>1))>>3))
                 nd_q = 2;
+/*
+            //delta0 mask
+            //                int delta0 = (9*(q0 - p0) - 3*(q1 - p1) + 8) >> 4;
+            t1= _mm_set_epi8(-1,10,-1,13,-1,11,-1,12,-1,2,-1,5,-1,3,-1,4);
+            m0= _mm_shuffle_epi8(l0,t1);
+            m1= _mm_shuffle_epi8(l1,t1);
+            m0= _mm_packus_epi16(m0,m1);
+            m0= _mm_maddubs_epi16(m0,_mm_set_epi8(3,-3,-9,9,3,-3,-9,9,3,-3,-9,9,3,-3,-9,9));
+            m0= _mm_hadd_epi16(m0,_mm_setzero_si128());
+            m0= _mm_add_epi16(m0,_mm_set1_epi16(8));
+            m0= _mm_srai_epi16(m0,4);		//delta0 for lines 0,3,1,2
+           printf("delta0 = %d, %d, %d, %d\n",_mm_extract_epi16(m0,0),_mm_extract_epi16(m0,2),_mm_extract_epi16(m0,3),_mm_extract_epi16(m0,1));
+
+            m1= _mm_cmplt_epi16(_mm_abs_epi16(m0),_mm_set1_epi16(tc*10)); //mask
+           // m1= _mm_packs_epi16(m1,_mm_setzero_si128());	//mask to 8bit
+
+            t1= _mm_srli_epi16(tcr,1);
+            m0=	_mm_min_epi16(m0,t1);
+            m0= _mm_max_epi16(m0,_mm_xor_si128(t1,_mm_cmpeq_epi16(_mm_setzero_si128(),_mm_setzero_si128()))); //delta0 for lines 0,3,1,2
+            printf("delta0CLIP = %d, %d, %d, %d\n",_mm_extract_epi16(m0,0),_mm_extract_epi16(m0,2),_mm_extract_epi16(m0,3),_mm_extract_epi16(m0,1));
+            if(!no_p)
+            {
+            	//P0
+            	t1= _mm_set_epi8(-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,11,-1,3);
+            	fp0= _mm_shuffle_epi8(l0,t1);
+            	fp1= _mm_shuffle_epi8(l1,t1);
+            	fp2= _mm_unpacklo_epi32(fp0,fp1); //contains p0 of lines 0,3,1,2
+               // printf("p0 = %d, %d, %d, %d\n",_mm_extract_epi16(fp2,0),_mm_extract_epi16(fp2,2),_mm_extract_epi16(fp2,3),_mm_extract_epi16(fp2,1));
+               // printf("delta = %d, %d, %d, %d\n",_mm_extract_epi16(m0,0),_mm_extract_epi16(m0,2),_mm_extract_epi16(m0,3),_mm_extract_epi16(m0,1));
+
+            	fp0= _mm_add_epi16(fp2,m0);
+              //  printf("add = %d, %d, %d, %d\n",_mm_extract_epi16(fp0,0),_mm_extract_epi16(fp0,2),_mm_extract_epi16(fp0,3),_mm_extract_epi16(fp0,1));
+            	fp0= _mm_packus_epi16(fp0,_mm_setzero_si128());
+            	//printf("p0 = %d, %d, %d, %d\n",_mm_extract_epi16(fp2,0),_mm_extract_epi16(fp2,2),_mm_extract_epi16(fp2,3),_mm_extract_epi16(fp2,1));
+              //  printf("P0 = %d, %d, %d, %d\n",_mm_extract_epi8(fp0,0),_mm_extract_epi8(fp0,2),_mm_extract_epi8(fp0,3),_mm_extract_epi8(fp0,1));
+
+    /*        	if(_mm_extract_epi16(m1,0)!=0)
+            	pix[-1]= _mm_extract_epi8(fp0,0);
+
+            	if(_mm_extract_epi16(m1,2)!=0)
+            	pix[-1+ystride]= _mm_extract_epi8(fp0,2);
+
+            	if(_mm_extract_epi16(m1,3)!=0)
+            	pix[-1+2*ystride]= _mm_extract_epi8(fp0,3);
+
+            	if(_mm_extract_epi16(m1,1)!=0)
+            	pix[-1+3*ystride]= _mm_extract_epi8(fp0,1);
+*//*
+            	if(nd_p != 1)
+            	{
+            		//P1
+            		//t1= _mm_set_epi8(-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,11,-1,3);
+            		fp0= _mm_shuffle_epi8(l0,t1);
+                   // printf("p0 = %d, %d, %d, %d\n",_mm_extract_epi16(fp0,0),_mm_extract_epi16(fp0,2),_mm_extract_epi16(fp0,3),_mm_extract_epi16(fp0,1));
+            		fp1= _mm_shuffle_epi8(l1,t1);
+                	fp0= _mm_unpacklo_epi32(fp0,fp1); //contains p0 of lines 0,3,1,2
+                    //printf("p0 = %d, %d, %d, %d\n",_mm_extract_epi16(fp0,0),_mm_extract_epi16(fp0,2),_mm_extract_epi16(fp0,3),_mm_extract_epi16(fp0,1));
+
+            		t1= _mm_set_epi8(-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,9,-1,1);
+            		fp2= _mm_shuffle_epi8(l0,t1);
+                    //printf("p2 = %d, %d, %d, %d\n",_mm_extract_epi16(fp2,0),_mm_extract_epi16(fp2,2),_mm_extract_epi16(fp2,3),_mm_extract_epi16(fp2,1));
+            		fp1= _mm_shuffle_epi8(l1,t1);
+                    //printf("p2 = %d, %d, %d, %d\n",_mm_extract_epi16(fp1,0),_mm_extract_epi16(fp1,2),_mm_extract_epi16(fp1,3),_mm_extract_epi16(fp1,1));
+                	fp2= _mm_unpacklo_epi32(fp2,fp1); //contains p2 of lines 0,3,1,2
+
+                    //printf("p2 = %d, %d, %d, %d\n",_mm_extract_epi16(fp2,0),_mm_extract_epi16(fp2,2),_mm_extract_epi16(fp2,3),_mm_extract_epi16(fp2,1));
+
+            		t1= _mm_set_epi8(-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,10,-1,2);
+            		t2= _mm_shuffle_epi8(l0,t1);
+            		fp1= _mm_shuffle_epi8(l1,t1);
+                	fp1= _mm_unpacklo_epi32(t2,fp1); //contains p1 of lines 0,3,1,2
+
+                  //  printf("p1 = %d, %d, %d, %d\n",_mm_extract_epi16(fp1,0),_mm_extract_epi16(fp1,2),_mm_extract_epi16(fp1,3),_mm_extract_epi16(fp1,1));
+
+
+                	fp0= _mm_avg_epu16(fp0,fp2);	//(p2 + p0 + 1) >> 1)
+                	fp2= _mm_sub_epi16(m0,fp1);		//delta0 - p1
+                	fp0= _mm_add_epi16(fp0,fp2);
+                	fp0= _mm_srai_epi16(fp0,1);		//(((p2 + p0 + 1) >> 1) - p1 + delta0) >> 1
+                 //   printf("deltanoclip = %d, %d, %d, %d\n",_mm_extract_epi16(fp0,0),_mm_extract_epi16(fp0,2),_mm_extract_epi16(fp0,3),_mm_extract_epi16(fp0,1));
+
+                	fp0= _mm_min_epi16(fp0,tcr);	// check max tc2
+                //    printf("P1 = %d, %d, %d, %d\n",_mm_extract_epi16(fp0,0),_mm_extract_epi16(fp0,2),_mm_extract_epi16(fp0,3),_mm_extract_epi16(fp0,1));
+
+                	fp0= _mm_max_epi16(fp0,_mm_xor_si128(tcr,_mm_cmpeq_epi16(tcr,tcr))); //check min -tc2
+                //    printf("avclip = %d, %d, %d, %d\n",_mm_extract_epi16(fp0,0),_mm_extract_epi16(fp0,2),_mm_extract_epi16(fp0,3),_mm_extract_epi16(fp0,1));
+
+                	fp0= _mm_packus_epi16(_mm_add_epi16(fp0,fp1),_mm_setzero_si128()); //av_clip_pixel(p1 + deltap1)
+                //    printf("P1 = %d, %d, %d, %d\n",_mm_extract_epi8(fp0,0),_mm_extract_epi8(fp0,2),_mm_extract_epi8(fp0,3),_mm_extract_epi8(fp0,1));
+
+/*
+                	if(_mm_extract_epi16(m1,0)!=0)
+                	pix[-2]= _mm_extract_epi8(fp0,0);
+
+                	if(_mm_extract_epi16(m1,2)!=0)
+                	pix[-2+ystride]= _mm_extract_epi8(fp0,2);
+
+                	if(_mm_extract_epi16(m1,3)!=0)
+                	pix[-2+2*ystride]= _mm_extract_epi8(fp0,3);
+
+                	if(_mm_extract_epi16(m1,1)!=0)
+                	pix[-2+3*ystride]= _mm_extract_epi8(fp0,1);
+                	*//*
+            	}
+            }
+            if(!no_q){
+            	//Q0
+            	t1= _mm_set_epi8(-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,12,-1,4);
+            	fp0= _mm_shuffle_epi8(l0,t1);
+            	fp1= _mm_shuffle_epi8(l1,t1);
+            	fp2= _mm_unpacklo_epi32(fp0,fp1); //contains q0 of lines 0,3,1,2
+
+            	fp0= _mm_sub_epi16(fp2,m0);
+            	fp0= _mm_packus_epi16(fp0,_mm_setzero_si128());
+             //   printf("Q0 = %d, %d, %d, %d\n",_mm_extract_epi8(fp0,0),_mm_extract_epi8(fp0,2),_mm_extract_epi8(fp0,3),_mm_extract_epi8(fp0,1));
+/*
+            	if(_mm_extract_epi16(m1,0)!=0)
+            	pix[0]= _mm_extract_epi8(fp0,0);
+
+            	if(_mm_extract_epi16(m1,2)!=0)
+            	pix[ystride]= _mm_extract_epi8(fp0,2);
+
+            	if(_mm_extract_epi16(m1,3)!=0)
+            	pix[2*ystride]= _mm_extract_epi8(fp0,3);
+
+            	if(_mm_extract_epi16(m1,1)!=0)
+            	pix[3*ystride]= _mm_extract_epi8(fp0,1);
+*//*
+            	if(nd_q != 1){
+            		//Q1
+            		t1= _mm_set_epi8(-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,12,-1,4);
+            		fp0= _mm_shuffle_epi8(l0,t1);
+            		fp1= _mm_shuffle_epi8(l1,t1);
+                	fp0= _mm_unpacklo_epi32(fp0,fp1); //contains p0 of lines 0,3,1,2
+                  //  printf("q0 = %d, %d, %d, %d\n",_mm_extract_epi16(fp0,0),_mm_extract_epi16(fp0,2),_mm_extract_epi16(fp0,3),_mm_extract_epi16(fp0,1));
+
+            		t1= _mm_set_epi8(-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,14,-1,6);
+            		fp2= _mm_shuffle_epi8(l0,t1);
+            		fp1= _mm_shuffle_epi8(l1,t1);
+                	fp2= _mm_unpacklo_epi32(fp2,fp1); //contains p2 of lines 0,3,1,2
+
+            //        printf("q2 = %d, %d, %d, %d\n",_mm_extract_epi16(fp2,0),_mm_extract_epi16(fp2,2),_mm_extract_epi16(fp2,3),_mm_extract_epi16(fp2,1));
+
+            		t1= _mm_set_epi8(-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,13,-1,5);
+            		t2= _mm_shuffle_epi8(l0,t1);
+            		fp1= _mm_shuffle_epi8(l1,t1);
+                	fp1= _mm_unpacklo_epi32(t2,fp1); //contains p1 of lines 0,3,1,2
+                 //     printf("q1 = %d, %d, %d, %d\n",_mm_extract_epi16(fp1,0),_mm_extract_epi16(fp1,2),_mm_extract_epi16(fp1,3),_mm_extract_epi16(fp1,1));
+
+                	fp0= _mm_avg_epu16(fp0,fp2);	//(p2 + p0 + 1) >> 1)
+                 //   printf("avg = %d, %d, %d, %d\n",_mm_extract_epi16(fp0,0),_mm_extract_epi16(fp0,2),_mm_extract_epi16(fp0,3),_mm_extract_epi16(fp0,1));
+                	fp2= _mm_add_epi16(m0,fp1);		//delta0 - p1
+                //	printf("delta0 = %d\n",_mm_extract_epi16(m0,0),_mm_extract_epi16(m0,2),_mm_extract_epi16(m0,3),_mm_extract_epi16(m0,1));
+                ///	printf("sub = %d, %d, %d, %d\n",_mm_extract_epi16(fp2,0),_mm_extract_epi16(fp2,2),_mm_extract_epi16(fp2,3),_mm_extract_epi16(fp2,1));
+                	fp0= _mm_sub_epi16(fp0,fp2);
+               //     printf("add = %d, %d, %d, %d\n",_mm_extract_epi16(fp0,0),_mm_extract_epi16(fp0,2),_mm_extract_epi16(fp0,3),_mm_extract_epi16(fp0,1));
+                	fp0= _mm_srai_epi16(fp0,1);		//(((p2 + p0 + 1) >> 1) - p1 + delta0) >> 1
+               //     printf("srai = %d, %d, %d, %d\n",_mm_extract_epi16(fp0,0),_mm_extract_epi16(fp0,2),_mm_extract_epi16(fp0,3),_mm_extract_epi16(fp0,1));
+                //	printf("tcr = %d\n",_mm_extract_epi16(tcr,0));
+                	fp0= _mm_min_epi16(fp0,tcr);	// check max tc2
+                	fp0= _mm_max_epi16(fp0,_mm_xor_si128(tcr,_mm_cmpeq_epi16(tcr,tcr))); //check min -tc2
+                  //  printf("deltaclip = %d, %d, %d, %d\n",_mm_extract_epi8(fp0,0),_mm_extract_epi8(fp0,2),_mm_extract_epi8(fp0,3),_mm_extract_epi8(fp0,1));
+                	fp0= _mm_packus_epi16(_mm_add_epi16(fp0,fp1),_mm_setzero_si128()); //av_clip_pixel(q1 + deltap1)
+             //       printf("Q1 = %d, %d, %d, %d\n",_mm_extract_epi8(fp0,0),_mm_extract_epi8(fp0,2),_mm_extract_epi8(fp0,3),_mm_extract_epi8(fp0,1));
+/*
+                	if(_mm_extract_epi16(m1,0)!=0)
+                		pix[1]= _mm_extract_epi8(fp0,0);
+                	if(_mm_extract_epi16(m1,2)!=0)
+                	pix[1+ystride]= _mm_extract_epi8(fp0,2);
+                	if(_mm_extract_epi16(m1,3)!=0)
+                	pix[1+2*ystride]= _mm_extract_epi8(fp0,3);
+                	if(_mm_extract_epi16(m1,1)!=0)
+                	pix[1+3*ystride]= _mm_extract_epi8(fp0,1);
+*//*
+            	}
+            }
+            //store according to mask
+/*            t1=_mm_set_epi8(-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,0,-1,-1,-1);
+            r0= _mm_and_epi8(r0,m1);	//p0
+            r1= _mm_and_epi8(r1,m1);	//p1
+            r2= _mm_and_epi8(r2,m1);	//q0
+            r3= _mm_and_epi8(r3,m1);	//q1
+            fp0= _mm_unpacklo_epi8(r1,r0);
+            fp1= _mm_unpacklo_epi8(r2,r3);
+            fp2= _mm_unpacklo_epi16(fp0,fp2);
+            r0= _mm_shuffle_epi8(fp2,_mm_set_epi8(-1,-1,7,6,5,4,-1,-1,-1,-1,3,2,1,0,-1,-1));
+            r1= _mm_shuffle_epi8(fp2,_mm_set_epi8(-1,-1,15,14,13,12,-1,-1,-1,-1,11,10,9,8,-1,-1));
+
+           // r2= _mm_shuffle_epi8(fp2,_mm_set_epi8(-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,11,10,9,8,-1,-1));
+           // r3= _mm_shuffle_epi8(fp2,_mm_set_epi8(-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,15,14,13,12,-1,-1));
+*/
 
             for(d = 0; d < 4; d++) {
                 const int p2 = P2;
@@ -5871,19 +5903,36 @@ static void FUNC(hevc_loop_filter_luma_v)(uint8_t *_pix, ptrdiff_t _xstride, ptr
                 const int q1 = Q1;
                 const int q2 = Q2;
                 int delta0 = (9*(q0 - p0) - 3*(q1 - p1) + 8) >> 4;
+                //printf("delta0= %d\n", delta0);
                 if (abs(delta0) < 10 * tc) {
                     delta0 = av_clip_c(delta0, -tc, tc);
-                    if(!no_p)
+                    if(!no_p){
                         P0 = av_clip_pixel(p0 + delta0);
-                    if(!no_q)
+                    //    printf("delta= %d\n",delta0);
+                    //    printf("p0= %d\n",p0);
+                    //    printf("P0 = %d\n",P0);
+
+                    }
+
+                    if(!no_q){
                         Q0 = av_clip_pixel(q0 - delta0);
-                    if(!no_p && nd_p > 1) {
+                   //     printf("Q0 = %d\n",Q0);
+
+                    }
+                    if(!no_p && nd_p > 1)
+                    	{
+
                         const int deltap1 = av_clip_c((((p2 + p0 + 1) >> 1) - p1 + delta0) >> 1, -tc_2, tc_2);
                         P1 = av_clip_pixel(p1 + deltap1);
+                  //      printf("P1 = %d\n",P1);
+
+                        //printf("avclip= %d\n",deltap1);
+
                     }
                     if(!no_q && nd_q > 1) {
                         const int deltaq1 = av_clip_c((((q2 + q0 + 1) >> 1) - q1 - delta0) >> 1, -tc_2, tc_2);
                         Q1 = av_clip_pixel(q1 + deltaq1);
+                  //      printf("Q1 = %d\n",Q1);
                     }
                 }
                 pix += ystride;
