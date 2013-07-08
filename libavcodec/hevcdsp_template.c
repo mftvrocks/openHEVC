@@ -5439,96 +5439,39 @@ for( j = 0; j < heightBL ; j++ )	{
         refPos -= ((NTAPS_LUMA>>1) - 1);
         srcY1 = tempBufY + refPos *widthEL;
         dstY = dstBufY + j * strideEL;
-        if(refPos < 0){
-        	for( i = 0; i < leftStartL; i++ )	{
+        if(refPos < 0)
+        for( i = 0; i < widthEL; i++ )	{
 
-        	        		for(k= 0; k<-refPos ; k++)
-        	        			buffer1[k] = srcY1[-refPos*widthEL]; //srcY1[(-refPos+k)*strideEL];
-        	                for(k= 0; k<8+refPos ; k++)
-        	                	buffer1[-refPos+k] = srcY1[(-refPos+k)*widthEL];
-        	                *dstY = av_clip_pixel( (LumVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
-        	                dstY++;
+        		for(k= 0; k<-refPos ; k++)
+        			buffer1[k] = srcY1[-refPos*widthEL]; //srcY1[(-refPos+k)*strideEL];
+                for(k= 0; k<8+refPos ; k++)
+                	buffer1[-refPos+k] = srcY1[(-refPos+k)*widthEL];
+                *dstY = av_clip_pixel( (LumVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
 
-        	        }
-        	for(; i <= rightEndL-2; i++ )	{
+            if( (i >= leftStartL) && (i <= rightEndL-2) )
+            	srcY1++;
+            dstY++;
+        }else if(refPos+8 > heightBL )
+        for( i = 0; i < widthEL; i++ )	{
 
-        	        		for(k= 0; k<-refPos ; k++)
-        	        			buffer1[k] = srcY1[-refPos*widthEL]; //srcY1[(-refPos+k)*strideEL];
-        	                for(k= 0; k<8+refPos ; k++)
-        	                	buffer1[-refPos+k] = srcY1[(-refPos+k)*widthEL];
-        	                *dstY = av_clip_pixel( (LumVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
+            for(k= 0; k<heightBL-refPos ; k++)
+            	buffer1[k] = srcY1[k*widthEL];
+            for(k= 0; k<8-(heightBL-refPos) ; k++)
+            	buffer1[heightBL-refPos+k] = srcY1[(heightBL-refPos-1)*widthEL];
+            	*dstY = av_clip_pixel( (LumVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
 
-        	            	srcY1++;
-        	            dstY++;
-        	        }
-        	for(; i < widthEL; i++ )	{
+            if( (i >= leftStartL) && (i <= rightEndL-2) )
+            	srcY1++;
+            dstY++;
+        }else
+        for( i = 0; i < widthEL; i++ )	{
 
-        	        		for(k= 0; k<-refPos ; k++)
-        	        			buffer1[k] = srcY1[-refPos*widthEL]; //srcY1[(-refPos+k)*strideEL];
-        	                for(k= 0; k<8+refPos ; k++)
-        	                	buffer1[-refPos+k] = srcY1[(-refPos+k)*widthEL];
-        	                *dstY = av_clip_pixel( (LumVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
+        		*dstY = av_clip_pixel( (LumVer_FILTER1(srcY1, coeff, widthEL) + iOffset) >> (nShift));
 
-
-
-        	            dstY++;
-        	        }
+            if( (i >= leftStartL) && (i <= rightEndL-2) )
+            	srcY1++;
+            dstY++;
         }
-        else if(refPos+8 > heightBL ){
-            for( i = 0; i < leftStartL; i++ )	{
-
-                for(k= 0; k<heightBL-refPos ; k++)
-                	buffer1[k] = srcY1[k*widthEL];
-                for(k= 0; k<8-(heightBL-refPos) ; k++)
-                	buffer1[heightBL-refPos+k] = srcY1[(heightBL-refPos-1)*widthEL];
-                	*dstY = av_clip_pixel( (LumVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
-
-                dstY++;
-            }
-            for( ; i <= rightEndL-2; i++ )	{
-
-                for(k= 0; k<heightBL-refPos ; k++)
-                	buffer1[k] = srcY1[k*widthEL];
-                for(k= 0; k<8-(heightBL-refPos) ; k++)
-                	buffer1[heightBL-refPos+k] = srcY1[(heightBL-refPos-1)*widthEL];
-                	*dstY = av_clip_pixel( (LumVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
-
-                	srcY1++;
-                dstY++;
-            }
-            for( ; i < widthEL; i++ )	{
-
-                for(k= 0; k<heightBL-refPos ; k++)
-                	buffer1[k] = srcY1[k*widthEL];
-                for(k= 0; k<8-(heightBL-refPos) ; k++)
-                	buffer1[heightBL-refPos+k] = srcY1[(heightBL-refPos-1)*widthEL];
-                	*dstY = av_clip_pixel( (LumVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
-
-                dstY++;
-            }
-        }
-        else{
-        	for( i = 0; i < leftStartL; i++ )	{
-
-        	        		*dstY = av_clip_pixel( (LumVer_FILTER1(srcY1, coeff, widthEL) + iOffset) >> (nShift));
-
-        	            dstY++;
-        	        }
-        	for( ; i <= rightEndL-2; i++ )	{
-
-        	        		*dstY = av_clip_pixel( (LumVer_FILTER1(srcY1, coeff, widthEL) + iOffset) >> (nShift));
-
-        	            	srcY1++;
-        	            dstY++;
-        	        }
-        	for( ; i < widthEL; i++ )	{
-
-        	        		*dstY = av_clip_pixel( (LumVer_FILTER1(srcY1, coeff, widthEL) + iOffset) >> (nShift));
-
-        	            dstY++;
-        	        }
-        }
-
     }
     widthBL   = FrameBL->width;
     heightBL  = FrameBL->height;
@@ -5631,155 +5574,68 @@ for( j = 0; j < heightBL ; j++ )	{
             srcV1 = tempBufV  + refPos *widthEL;
             dstU = dstBufU + j*strideEL;
             dstV = dstBufV + j*strideEL;
-            if(refPos < 0){
-            	for( i = 0; i < leftStartC; i++ )	{
+            if(refPos < 0)
+            for( i = 0; i < widthEL; i++ )	{
 
-            	            		for(k= 0; k<-refPos ; k++){
-            	            			buffer1[k] = srcU1[(-refPos)*widthEL];
-            	            			buffer1[k+4] = srcV1[(-refPos)*widthEL];
-            	            		}
-            	            		for(k= 0; k<4+refPos ; k++){
-            	            			buffer1[-refPos+k] = srcU1[(-refPos+k)*widthEL];
-            	            			buffer1[-refPos+k+4] = srcV1[(-refPos+k)*widthEL];
-            	            		}
-            	            		*dstU = av_clip_pixel( (CroVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
-            	            		*dstV = av_clip_pixel( (CroVer_FILTER((buffer1+4), coeff) + iOffset) >> (nShift));
+            		for(k= 0; k<-refPos ; k++){
+            			buffer1[k] = srcU1[(-refPos)*widthEL];
+            			buffer1[k+4] = srcV1[(-refPos)*widthEL];
+            		}
+                    for(k= 0; k<4+refPos ; k++){
+                    	buffer1[-refPos+k] = srcU1[(-refPos+k)*widthEL];
+                    	buffer1[-refPos+k+4] = srcV1[(-refPos+k)*widthEL];
+                    }
+                    *dstU = av_clip_pixel( (CroVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
+                    *dstV = av_clip_pixel( (CroVer_FILTER((buffer1+4), coeff) + iOffset) >> (nShift));
 
-            	            		dstU++;
-            	            		dstV++;
-            	            	}
-            	for(; i <= rightEndC-2; i++ )	{
+            		if( (i >= leftStartC) && (i <= rightEndC-2) )	{
+            			srcU1++;
+                        srcV1++;
+            		}
+            		dstU++;
+            		dstV++;
+                    }else if(refPos+4 > heightBL )
+            for( i = 0; i < widthEL; i++ )	{
 
-            	            		for(k= 0; k<-refPos ; k++){
-            	            			buffer1[k] = srcU1[(-refPos)*widthEL];
-            	            			buffer1[k+4] = srcV1[(-refPos)*widthEL];
-            	            		}
-            	            		for(k= 0; k<4+refPos ; k++){
-            	            			buffer1[-refPos+k] = srcU1[(-refPos+k)*widthEL];
-            	            			buffer1[-refPos+k+4] = srcV1[(-refPos+k)*widthEL];
-            	            		}
-            	            		*dstU = av_clip_pixel( (CroVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
-            	            		*dstV = av_clip_pixel( (CroVer_FILTER((buffer1+4), coeff) + iOffset) >> (nShift));
+                        		for(k= 0; k< heightBL-refPos ; k++) {
+                        			buffer1[k] = srcU1[k*widthEL];
+                                    buffer1[k+4] = srcV1[k*widthEL];
+                        		}
+                                for(k= 0; k<4-(heightBL-refPos) ; k++) {
+                                	buffer1[heightBL-refPos+k] = srcU1[(heightBL-refPos-1)*widthEL];
+                                	buffer1[heightBL-refPos+k+4] = srcV1[(heightBL-refPos-1)*widthEL];
+                                }
+                                *dstU = av_clip_pixel( (CroVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
 
 
-            	            			srcU1++;
-            	            			srcV1++;
+                                	*dstV = av_clip_pixel( (CroVer_FILTER((buffer1+4), coeff) + iOffset) >> (nShift));
 
-            	            		dstU++;
-            	            		dstV++;
-            	            	}
-            	for(; i < widthEL; i++ )	{
+                        		if( (i >= leftStartC) && (i <= rightEndC-2) )	{
+                        			srcU1++;
+                                    srcV1++;
+                        		}
+                        		dstU++;
+                        		dstV++;
+                                }else
+            for( i = 0; i < widthEL; i++ )	{
+                            		*dstU = av_clip_pixel( (CroVer_FILTER1(srcU1, coeff, widthEL) + iOffset) >> (nShift));
 
-            	            		for(k= 0; k<-refPos ; k++){
-            	            			buffer1[k] = srcU1[(-refPos)*widthEL];
-            	            			buffer1[k+4] = srcV1[(-refPos)*widthEL];
-            	            		}
-            	            		for(k= 0; k<4+refPos ; k++){
-            	            			buffer1[-refPos+k] = srcU1[(-refPos+k)*widthEL];
-            	            			buffer1[-refPos+k+4] = srcV1[(-refPos+k)*widthEL];
-            	            		}
-            	            		*dstU = av_clip_pixel( (CroVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
-            	            		*dstV = av_clip_pixel( (CroVer_FILTER((buffer1+4), coeff) + iOffset) >> (nShift));
 
-            	            		dstU++;
-            	            		dstV++;
-            	            	}
+                            		*dstV = av_clip_pixel( (CroVer_FILTER1(srcV1, coeff, widthEL) + iOffset) >> (nShift));
+
+                        		if( (i >= leftStartC) && (i <= rightEndC-2) )	{
+                        			srcU1++;
+                                    srcV1++;
+                        		}
+                        		dstU++;
+                        		dstV++;
+                                }
             }
-            	else if(refPos+4 > heightBL ){
-            		for( i = 0; i < leftStartC; i++ )	{
-
-            			for(k= 0; k< heightBL-refPos ; k++) {
-            				buffer1[k] = srcU1[k*widthEL];
-            				buffer1[k+4] = srcV1[k*widthEL];
-            			}
-            			for(k= 0; k<4-(heightBL-refPos) ; k++) {
-            				buffer1[heightBL-refPos+k] = srcU1[(heightBL-refPos-1)*widthEL];
-            				buffer1[heightBL-refPos+k+4] = srcV1[(heightBL-refPos-1)*widthEL];
-            			}
-            			*dstU = av_clip_pixel( (CroVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
-
-
-            			*dstV = av_clip_pixel( (CroVer_FILTER((buffer1+4), coeff) + iOffset) >> (nShift));
-            			dstU++;
-            			dstV++;
-            		}
-            		for(; i <= rightEndC-2; i++ )	{
-
-            			for(k= 0; k< heightBL-refPos ; k++) {
-            				buffer1[k] = srcU1[k*widthEL];
-            				buffer1[k+4] = srcV1[k*widthEL];
-            			}
-            			for(k= 0; k<4-(heightBL-refPos) ; k++) {
-            				buffer1[heightBL-refPos+k] = srcU1[(heightBL-refPos-1)*widthEL];
-            				buffer1[heightBL-refPos+k+4] = srcV1[(heightBL-refPos-1)*widthEL];
-            			}
-            			*dstU = av_clip_pixel( (CroVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
-
-
-            			*dstV = av_clip_pixel( (CroVer_FILTER((buffer1+4), coeff) + iOffset) >> (nShift));
-            			srcU1++;
-            			srcV1++;
-
-            			dstU++;
-            			dstV++;
-            		}
-            		for(; i < widthEL; i++ )	{
-
-            			for(k= 0; k< heightBL-refPos ; k++) {
-            				buffer1[k] = srcU1[k*widthEL];
-            				buffer1[k+4] = srcV1[k*widthEL];
-            			}
-            			for(k= 0; k<4-(heightBL-refPos) ; k++) {
-            				buffer1[heightBL-refPos+k] = srcU1[(heightBL-refPos-1)*widthEL];
-            				buffer1[heightBL-refPos+k+4] = srcV1[(heightBL-refPos-1)*widthEL];
-            			}
-            			*dstU = av_clip_pixel( (CroVer_FILTER(buffer1, coeff) + iOffset) >> (nShift));
-
-
-            			*dstV = av_clip_pixel( (CroVer_FILTER((buffer1+4), coeff) + iOffset) >> (nShift));
-
-            			dstU++;
-            			dstV++;
-            		}
-
-            	}
-            	else{
-            		for( i = 0; i < leftStartC; i++ )	{
-            			*dstU = av_clip_pixel( (CroVer_FILTER1(srcU1, coeff, widthEL) + iOffset) >> (nShift));
-
-
-            			*dstV = av_clip_pixel( (CroVer_FILTER1(srcV1, coeff, widthEL) + iOffset) >> (nShift));
-
-            			dstU++;
-            			dstV++;
-            		}
-            		for(; i <= rightEndC-2; i++ )	{
-            			*dstU = av_clip_pixel( (CroVer_FILTER1(srcU1, coeff, widthEL) + iOffset) >> (nShift));
-
-
-            			*dstV = av_clip_pixel( (CroVer_FILTER1(srcV1, coeff, widthEL) + iOffset) >> (nShift));
-            			srcU1++;
-            			srcV1++;
-
-            			dstU++;
-            			dstV++;
-            		}
-            		for(; i < widthEL; i++ )	{
-            			*dstU = av_clip_pixel( (CroVer_FILTER1(srcU1, coeff, widthEL) + iOffset) >> (nShift));
-
-
-            			*dstV = av_clip_pixel( (CroVer_FILTER1(srcV1, coeff, widthEL) + iOffset) >> (nShift));
-
-            			dstU++;
-            			dstV++;
-            		}
-
-            	}
-
-        }
 }
 static void FUNC(upsample_base_layer_frame_sse)(AVFrame *FrameEL, AVFrame *FrameBL, short *Buffer[3], const int32_t enabled_up_sample_filter_luma[16][8], const int32_t enabled_up_sample_filter_chroma[16][4], struct HEVCWindow *Enhscal, struct UpsamplInf *up_info)
 {
+    __m128i r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15;
+
     int i,j, k;
     int widthBL =  FrameBL->width;
     int heightBL = FrameBL->height;
@@ -5898,14 +5754,138 @@ for( j = 0; j < heightBL ; j++ )	{
             if( (i >= leftStartL) && (i <= rightEndL-2) )
             	srcY1++;
             dstY++;
-        }else
-        for( i = 0; i < widthEL; i++ )	{
+        }else{
+        for( i = 0; i < leftStartL; i++ )	{
 
         		*dstY = av_clip_pixel( (LumVer_FILTER1(srcY1, coeff, widthEL) + iOffset) >> (nShift));
 
-            if( (i >= leftStartL) && (i <= rightEndL-2) )
+            dstY++;
+        }
+        r15= _mm_set1_epi32(iOffset);
+    	for( ; i <= (rightEndL-20); i+=8 )	{
+        	r0= _mm_loadu_si128((__m128i*)srcY1);
+        	r1= _mm_loadu_si128((__m128i*)(srcY1+widthEL));
+        	r2= _mm_loadu_si128((__m128i*)(srcY1+widthEL*2));
+        	r3= _mm_loadu_si128((__m128i*)(srcY1+widthEL*3));
+        	r4= _mm_loadu_si128((__m128i*)(srcY1+widthEL*4));
+        	r5= _mm_loadu_si128((__m128i*)(srcY1+widthEL*5));
+        	r6= _mm_loadu_si128((__m128i*)(srcY1+widthEL*6));
+        	r7= _mm_loadu_si128((__m128i*)(srcY1+widthEL*7));
+        	r8= _mm_loadu_si128((__m128i*)coeff); //32 bit data, need 2 full loads to get all 8
+        	r9= _mm_loadu_si128((__m128i*)(coeff+4));
+      //  	printf("coeff value : %d vs %d\n", _mm_extract_epi32(r8,0), coeff[0]);
+
+        	r11= _mm_shuffle_epi32(r8,_MM_SHUFFLE(0,0,0,0));
+        	r11= _mm_packs_epi32(r11,r11);
+        	r14= _mm_mullo_epi16(r11,r0);
+        	r10= _mm_mulhi_epi16(r11,r0);
+        	r12= _mm_unpacklo_epi16(r14,r10);
+        	r13= _mm_unpackhi_epi16(r14,r10);
+     //   	printf("0 : %d vs %d\n",_mm_extract_epi32(r12,0),srcY1[0]*coeff[0]);
+
+        	r11= _mm_shuffle_epi32(r8,_MM_SHUFFLE(1,1,1,1));
+        	r11= _mm_packs_epi32(r11,r11);
+        	r0= _mm_mullo_epi16(r11,r1);
+        	r10= _mm_mulhi_epi16(r11,r1);
+        	r12= _mm_add_epi32(r12,_mm_unpacklo_epi16(r0,r10));
+        	r13= _mm_add_epi32(r13,_mm_unpackhi_epi16(r0,r10));
+    //   	printf("1 : %d vs %d\n",_mm_extract_epi32(r12,0),srcY1[0]*coeff[0] + srcY1[widthEL]*coeff[1]);
+
+
+        	r11= _mm_shuffle_epi32(r8,_MM_SHUFFLE(2,2,2,2));
+        	r11= _mm_packs_epi32(r11,r11);
+        	r0= _mm_mullo_epi16(r11,r2);
+        	r10= _mm_mulhi_epi16(r11,r2);
+        	r12= _mm_add_epi32(r12,_mm_unpacklo_epi16(r0,r10));
+        	r13= _mm_add_epi32(r13,_mm_unpackhi_epi16(r0,r10));
+   //     	printf("2 : %d vs %d\n",_mm_extract_epi32(r13,0),srcY1[4]*coeff[0] + srcY1[widthEL+4]*coeff[1] + srcY1[widthEL*2+4]*coeff[2]);
+
+
+        	r11= _mm_shuffle_epi32(r8,_MM_SHUFFLE(3,3,3,3));
+        	r11= _mm_packs_epi32(r11,r11);
+        	//printf("coeff value : %d vs %d\n", _mm_extract_epi16(r11,0), coeff[3]);
+        	r0= _mm_mullo_epi16(r11,r3);
+        	r10= _mm_mulhi_epi16(r11,r3);
+        	r12= _mm_add_epi32(r12,_mm_unpacklo_epi16(r0,r10));
+        	r13= _mm_add_epi32(r13,_mm_unpackhi_epi16(r0,r10));
+       // 	printf("3 : %d vs %d\n",_mm_extract_epi32(r12,0),srcY1[0]*coeff[0] + srcY1[widthEL]*coeff[1] + srcY1[widthEL*2]*coeff[2]+ srcY1[widthEL*3]*coeff[3]);
+
+
+        	r11= _mm_shuffle_epi32(r9,_MM_SHUFFLE(0,0,0,0));
+        	r11= _mm_packs_epi32(r11,r11);
+        	r0= _mm_mullo_epi16(r11,r4);
+        	r10= _mm_mulhi_epi16(r11,r4);
+        	r12= _mm_add_epi32(r12,_mm_unpacklo_epi16(r0,r10));
+        	r13= _mm_add_epi32(r13,_mm_unpackhi_epi16(r0,r10));
+  //      	printf("4 : %d vs %d\n",_mm_extract_epi32(r13,0),srcY1[4]*coeff[0] + srcY1[widthEL+4]*coeff[1] + srcY1[widthEL*2+4]*coeff[2]+ srcY1[widthEL*3+4]*coeff[3]+ srcY1[widthEL*4+4]*coeff[4]);
+
+
+        	r11= _mm_shuffle_epi32(r9,_MM_SHUFFLE(1,1,1,1));
+        	r11= _mm_packs_epi32(r11,r11);
+        	r0= _mm_mullo_epi16(r11,r5);
+        	r10= _mm_mulhi_epi16(r11,r5);
+        	r12= _mm_add_epi32(r12,_mm_unpacklo_epi16(r0,r10));
+        	r13= _mm_add_epi32(r13,_mm_unpackhi_epi16(r0,r10));
+  //      	printf("5 : %d vs %d\n",_mm_extract_epi32(r13,0),srcY1[4]*coeff[0] + srcY1[widthEL+4]*coeff[1] + srcY1[widthEL*2+4]*coeff[2]+ srcY1[widthEL*3+4]*coeff[3]+ srcY1[widthEL*4+4]*coeff[4]+ srcY1[widthEL*5+4]*coeff[5]);
+
+
+        	r11= _mm_shuffle_epi32(r9,_MM_SHUFFLE(2,2,2,2));
+        	r11= _mm_packs_epi32(r11,r11);
+        	r0= _mm_mullo_epi16(r11,r6);
+        	r10= _mm_mulhi_epi16(r11,r6);
+        	r12= _mm_add_epi32(r12,_mm_unpacklo_epi16(r0,r10));
+        	r13= _mm_add_epi32(r13,_mm_unpackhi_epi16(r0,r10));
+        //	printf("6 : %d vs %d\n",_mm_extract_epi32(r13,0),srcY1[0]*coeff[0] + srcY1[widthEL]*coeff[1] + srcY1[widthEL*2]*coeff[2]+ srcY1[widthEL*3]*coeff[3]+ srcY1[widthEL*4]*coeff[4]+ srcY1[widthEL*5]*coeff[5]+ srcY1[widthEL*6]*coeff[6]);
+
+
+        	r11= _mm_shuffle_epi32(r9,_MM_SHUFFLE(3,3,3,3));
+        	r11= _mm_packs_epi32(r11,r11);
+        	r0= _mm_mullo_epi16(r11,r7);
+        	r10= _mm_mulhi_epi16(r11,r7);
+        	r12= _mm_add_epi32(r12,_mm_unpacklo_epi16(r0,r10));
+        	r13= _mm_add_epi32(r13,_mm_unpackhi_epi16(r0,r10));
+        	//srcY1+=4;
+      //  	printf("coeff add : %d vs %d\n",_mm_extract_epi32(r12,0),LumVer_FILTER1(srcY1, coeff, widthEL));
+        	//srcY1-=4;
+
+        	r0= _mm_add_epi32(r12,r15);
+        	r10= _mm_add_epi32(r13,r15);
+      //  	printf("coeff ioff : %d vs %d\n",_mm_extract_epi32(r0,0),LumVer_FILTER1(srcY1, coeff, widthEL)+iOffset);
+
+        	r0= _mm_srai_epi32(r0,nShift);
+        	r10= _mm_srai_epi32(r10,nShift);
+    //    	printf("coeff shift : %d vs %d\n",_mm_extract_epi32(r0,0),(LumVer_FILTER1(srcY1, coeff, widthEL)+iOffset)>>nShift);
+
+        	r0= _mm_packus_epi32(r0,r10);
+        	r0= _mm_packus_epi16(r0,_mm_setzero_si128());
+
+        	_mm_storel_epi64((__m128i*)dstY,r0);
+
+        	//srcY1+=7;
+        	//if(dstY[0] != av_clip_pixel( (LumVer_FILTER1(srcY1, coeff, widthEL) + iOffset) >> (nShift)))
+        	//printf("dstY = %d vs %d\n",dstY[0],av_clip_pixel( (LumVer_FILTER1(srcY1, coeff, widthEL) + iOffset) >> (nShift)));
+        	//srcY1-=7;
+    	        		//*dstY = av_clip_pixel( (LumVer_FILTER1(srcY1, coeff, widthEL) + iOffset) >> (nShift));
+
+    	            	srcY1+=8;
+    	            dstY+=8;
+    	        }
+
+        for( ; i <= (rightEndL-2); i++ )	{
+
+        		*dstY = av_clip_pixel( (LumVer_FILTER1(srcY1, coeff, widthEL) + iOffset) >> (nShift));
+
+
             	srcY1++;
             dstY++;
+        }
+        for( ; i < widthEL; i++ )	{
+
+        		*dstY = av_clip_pixel( (LumVer_FILTER1(srcY1, coeff, widthEL) + iOffset) >> (nShift));
+
+
+            dstY++;
+        }
         }
     }
     widthBL   = FrameBL->width;
@@ -6067,8 +6047,6 @@ for( j = 0; j < heightBL ; j++ )	{
                                 }
             }
 }
-
-
 
 #undef LumHor_FILTER
 #undef LumCro_FILTER
